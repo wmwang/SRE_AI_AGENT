@@ -1,0 +1,33 @@
+{
+    "name": "@sre-agent/mcp-registry",
+    "version": "1.0.0",
+    "description": "MCP 服務註冊與發現中心",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        },
+        "./client": {
+            "types": "./dist/client.d.ts",
+            "default": "./dist/client.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "clean": "rm -rf dist",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "eventemitter3": "^5.0.1",
+        "better-sqlite3": "^11.7.0"
+    },
+    "devDependencies": {
+        "@types/better-sqlite3": "^7.6.12"
+    }
+}

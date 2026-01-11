@@ -1,0 +1,30 @@
+{
+    "name": "@sre-agent/mcp-slo-management",
+    "version": "1.0.0",
+    "description": "SLO Management MCP Server - SLO 生命週期管理",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "bin": {
+        "slo-mcp-server": "./dist/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "start": "node dist/index.js",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:integration": "tsx test/integration-test.ts",
+        "clean": "rm -rf dist",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.0.4",
+        "@sre-agent/shared-memory": "workspace:*",
+        "openai": "^4.76.1",
+        "zod": "^3.24.1"
+    },
+    "devDependencies": {
+        "@types/node": "^22.10.5"
+    }
+}

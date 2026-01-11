@@ -1,0 +1,61 @@
+groups:
+  - name: "web-frontend_slo_recording_rules"
+    rules:
+      - record: "slo:slo_1:availability"
+        expr: "sum(up{service=\"web-frontend\"}) / count(up{service=\"web-frontend\"})"
+      - record: "slo:slo_2:latency_p99"
+        expr: "histogram_quantile(0.99, sum(rate(web-frontend_latency_sli_bucket{service=\"web-frontend\"}[5m])) by (le))"
+      - record: "slo:slo_3:error_rate"
+        expr: "sum(rate(web-frontend_errors_sli_errors_total{service=\"web-frontend\"}[5m])) / sum(rate(web-frontend_errors_sli_total{service=\"web-frontend\"}[5m]))"
+  - name: "web-frontend_slo_alert_rules"
+    rules:
+      - alert: "SLO_Availability_Breached"
+        expr: "slo:slo_1:availability < 0.9990000000000001"
+        for: "5m"
+        labels:
+          severity: "warning"
+          slo_id: "slo-1"
+          golden_signal: "Availability"
+        annotations:
+          summary: "SLO Availability 已違反"
+          description: "Availability 的目標是 99.9%，但目前已超出閾值。"
+      - alert: "SLO_Latency_Breached"
+        expr: "slo:slo_2:latency_p99 > 200"
+        for: "5m"
+        labels:
+          severity: "warning"
+          slo_id: "slo-2"
+          golden_signal: "Latency"
+        annotations:
+          summary: "SLO Latency 已違反"
+          description: "Latency 的目標是 95%，但目前已超出閾值。"
+      - alert: "SLO_Error_Rate_Breached"
+        expr: "slo:slo_3:error_rate > 0.99"
+        for: "5m"
+        labels:
+          severity: "warning"
+          slo_id: "slo-3"
+          golden_signal: "Errors"
+        annotations:
+          summary: "SLO Error Rate 已違反"
+          description: "Error Rate 的目標是 1%，但目前已超出閾值。"
+      - alert: "SLO_Throughput_Breached"
+        expr: "slo:slo_4:availability < 10"
+        for: "5m"
+        labels:
+          severity: "warning"
+          slo_id: "slo-4"
+          golden_signal: "Throughput"
+        annotations:
+          summary: "SLO Throughput 已違反"
+          description: "Throughput 的目標是 1000%，但目前已超出閾值。"
+      - alert: "SLO_User_Satisfaction_Breached"
+        expr: "slo:slo_5:availability < 0.9"
+        for: "5m"
+        labels:
+          severity: "warning"
+          slo_id: "slo-5"
+          golden_signal: "User Satisfaction"
+        annotations:
+          summary: "SLO User Satisfaction 已違反"
+          description: "User Satisfaction 的目標是 90%，但目前已超出閾值。"

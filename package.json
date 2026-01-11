@@ -1,0 +1,36 @@
+{
+  "name": "sre-ops-ai-agent",
+  "version": "1.0.0",
+  "description": "企業級 SRE/OPS AI Agent 系統 - 提供高階建議與診斷",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter \"./packages/*\" run build",
+    "dev": "pnpm --filter \"./packages/*\" run dev",
+    "test": "pnpm --filter \"./packages/*\" run test",
+    "test:integration": "pnpm --filter \"./packages/*\" run test:integration",
+    "clean": "pnpm --filter \"./packages/*\" run clean && rm -rf node_modules",
+    "typecheck": "pnpm --filter \"./packages/*\" run typecheck"
+  },
+  "keywords": [
+    "sre",
+    "ops",
+    "ai-agent",
+    "mcp",
+    "observability",
+    "slo",
+    "monitoring"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "typescript": "^5.7.2",
+    "tsx": "^4.19.2",
+    "vitest": "^2.1.8"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

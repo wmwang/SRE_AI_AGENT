@@ -1,0 +1,41 @@
+{
+    "compilerOptions": {
+        // 語言與環境
+        "target": "ES2022",
+        "lib": [
+            "ES2022"
+        ],
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        // 輸出設定
+        "outDir": "./dist",
+        "declaration": true,
+        "declarationMap": true,
+        "sourceMap": true,
+        // 嚴格檢查
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "noImplicitOverride": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        // 模組解析
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true,
+        "isolatedModules": true,
+        // 其他
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        // JSX 支援（用於 Ink）
+        "jsx": "react-jsx",
+        "jsxImportSource": "react"
+    },
+    "exclude": [
+        "node_modules",
+        "dist",
+        "build",
+        "*.config.js",
+        "*.config.ts"
+    ]
+}

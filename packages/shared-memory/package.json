@@ -1,0 +1,29 @@
+{
+    "name": "@sre-agent/shared-memory",
+    "version": "1.0.0",
+    "description": "Shared Memory Service - 各 MCP Server 的統一資料共享層",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "clean": "rm -rf dist",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "better-sqlite3": "^11.7.0",
+        "eventemitter3": "^5.0.1"
+    },
+    "devDependencies": {
+        "@types/better-sqlite3": "^7.6.12"
+    }
+}

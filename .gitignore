@@ -1,0 +1,41 @@
+# 依賴
+node_modules/
+.pnpm-store/
+
+# 建置輸出
+dist/
+build/
+*.tsbuildinfo
+
+# 環境變數
+.env
+.env.local
+.env.*.local
+
+# 日誌
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# 作業系統
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 測試覆蓋率
+coverage/
+.nyc_output/
+
+# 暫存檔案
+*.tmp
+.cache/
+
+# SRE Agent 資料
+.sre-agent/

@@ -1,0 +1,29 @@
+{
+    "name": "@sre-agent/mcp-metrics-analysis",
+    "version": "1.0.0",
+    "description": "Metrics Analysis MCP Server - Prometheus 指標分析",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "bin": {
+        "metrics-mcp-server": "./dist/index.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc --watch",
+        "start": "node dist/index.js",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "clean": "rm -rf dist",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.0.4",
+        "@sre-agent/shared-memory": "workspace:*",
+        "openai": "^4.76.1",
+        "zod": "^3.24.1"
+    },
+    "devDependencies": {
+        "@types/node": "^22.10.5"
+    }
+}

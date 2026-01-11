@@ -1,0 +1,45 @@
+# 有安全問題的 K8s 部署範例
+# 用於測試 suggest_improvements 工具
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insecure-app
+  # 缺少 namespace
+spec:
+  replicas: 1  # 單一副本，無高可用
+  selector:
+    matchLabels:
+      app: insecure
+  template:
+    metadata:
+      labels:
+        app: insecure
+      # 缺少 annotations
+    spec:
+      containers:
+      - name: app
+        image: myapp:latest  # 使用 latest tag
+        ports:
+        - containerPort: 8080
+        # 缺少 resources limits
+        # 缺少 liveness/readiness probes
+        securityContext:
+          privileged: true  # 安全問題！
+          runAsRoot: true
+        env:
+        - name: DB_PASSWORD
+          value: "password123"  # 安全問題：密碼明文
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: insecure-service
+spec:
+  selector:
+    app: insecure
+  ports:
+  - port: 8080
+  type: LoadBalancer  # 直接暴露 LoadBalancer，可能不必要

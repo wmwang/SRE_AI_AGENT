@@ -1,0 +1,45 @@
+[
+  {
+    "id": "web-availability",
+    "name": "Availability",
+    "description": "在指定時間窗口內，成功請求到網頁應用程式的百分比。",
+    "target": 99.9,
+    "threshold": 99,
+    "window": "1 month",
+    "golden_signal": "Availability"
+  },
+  {
+    "id": "web-latency",
+    "name": "Latency",
+    "description": "在指定的響應時間閾值內服務的請求百分比。",
+    "target": 95,
+    "threshold": 200,
+    "window": "1 month",
+    "golden_signal": "Latency"
+  },
+  {
+    "id": "web-error-rate",
+    "name": "Error Rate",
+    "description": "所有請求中導致錯誤響應的百分比。",
+    "target": 1,
+    "threshold": 5,
+    "window": "1 month",
+    "golden_signal": "Errors"
+  },
+  {
+    "id": "web-traffic",
+    "name": "Traffic",
+    "description": "每秒成功請求到網頁應用程式的數量。",
+    "target": 1000,
+    "window": "1 month",
+    "golden_signal": "Traffic"
+  },
+  {
+    "id": "web-uptime",
+    "name": "Uptime",
+    "description": "網頁應用程式運行和可訪問的時間百分比。",
+    "target": 99.95,
+    "window": "1 month",
+    "golden_signal": "Availability"
+  }
+]
