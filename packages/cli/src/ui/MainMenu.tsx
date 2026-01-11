@@ -16,6 +16,10 @@ export function MainMenu({ onSelectCallback }: MainMenuProps) {
             value: 'slo_workflow',
         },
         {
+            label: '📊 Metrics Explorer (自然語言查詢指標)',
+            value: 'metrics_explorer',
+        },
+        {
             label: '🛠️  瀏覽工具箱 (手動模式)',
             value: 'tools',
         },

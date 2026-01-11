@@ -9,6 +9,7 @@ import { ToolPreview } from './ToolPreview.js';
 import { ParamForm } from './ParamForm.js';
 import { ResultFormatter } from './ResultFormatter.js';
 import { SLOWorkflowView } from './SLOWorkflowView.js';
+import { MetricsExplorerView } from './MetricsExplorerView.js';
 import type { MCPToolInfo, MCPClientManager } from '../mcp/manager.js';
 
 interface AppProps {
@@ -21,7 +22,7 @@ interface AppProps {
     error?: string;
 }
 
-type ViewState = 'main_menu' | 'ai_query' | 'tool_browser' | 'tool_preview' | 'param_form' | 'result' | 'slo_workflow';
+type ViewState = 'main_menu' | 'ai_query' | 'tool_browser' | 'tool_preview' | 'param_form' | 'result' | 'slo_workflow' | 'metrics_explorer';
 
 export function App({ onQuery, onExecuteTool, mcpManager, isProcessing, currentStep, response, error }: AppProps) {
     const [view, setView] = useState<ViewState>('main_menu');
@@ -56,6 +57,7 @@ export function App({ onQuery, onExecuteTool, mcpManager, isProcessing, currentS
                 <MainMenu onSelectCallback={(value) => {
                     if (value === 'ai') setView('ai_query');
                     if (value === 'slo_workflow') setView('slo_workflow');
+                    if (value === 'metrics_explorer') setView('metrics_explorer');
                     if (value === 'tools') setView('tool_browser');
                     if (value === 'exit') process.exit(0);
                 }} />
@@ -74,6 +76,16 @@ export function App({ onQuery, onExecuteTool, mcpManager, isProcessing, currentS
                     // 用戶按 ESC 返回時才會觸發 onCancel
                 }}
                 onCancel={() => setView('main_menu')}
+            />
+        );
+    }
+
+    // --- View: Metrics Explorer ---
+    if (view === 'metrics_explorer') {
+        return (
+            <MetricsExplorerView
+                mcpManager={mcpManager}
+                onExit={() => setView('main_menu')}
             />
         );
     }

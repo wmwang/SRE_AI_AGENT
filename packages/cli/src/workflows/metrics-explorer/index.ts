@@ -68,32 +68,99 @@ export class MetricsExplorerWorkflow {
         this.updateState({
             mode: 'discovering',
             isLoading: true,
-            currentStep: '正在探索可用指標...',
+            currentStep: '正在初始化...',
         });
 
         try {
-            // Step 1: 探索指標
-            const discoverResult = await discoverMetricsNode(this.state, this.mcpManager);
-            this.updateState(discoverResult);
+            // Step 1: 嘗試探索指標（允許失敗）
+            try {
+                const discoverResult = await discoverMetricsNode(this.state, this.mcpManager);
+                this.updateState(discoverResult);
+            } catch (e) {
+                console.error('[Metrics Explorer] discover failed:', e);
+            }
 
-            // Step 2: 生成查詢建議
-            this.updateState({ currentStep: '正在生成查詢建議...' });
-            const hintsResult = await generateHintsNode(this.state, this.mcpManager);
-            this.updateState(hintsResult);
+            // Step 2: 嘗試通過 MCP 生成查詢建議
+            try {
+                this.updateState({ currentStep: '正在生成查詢建議...' });
+                const hintsResult = await generateHintsNode(this.state, this.mcpManager);
+                if (hintsResult.metricHints && hintsResult.metricHints.length > 0) {
+                    this.updateState(hintsResult);
+                } else {
+                    // 如果沒有 hints，使用本地 fallback
+                    this.updateState({ metricHints: this.getDefaultHints() });
+                }
+            } catch (e) {
+                console.error('[Metrics Explorer] hints failed, using fallback:', e);
+                // 使用本地 fallback hints
+                this.updateState({ metricHints: this.getDefaultHints() });
+            }
 
             this.updateState({
                 isLoading: false,
                 mode: 'idle',
                 currentStep: '準備就緒，請輸入查詢',
+                error: null,
             });
         } catch (error) {
+            console.error('[Metrics Explorer] init failed:', error);
+            // 即使失敗也提供 fallback hints
             this.updateState({
                 isLoading: false,
-                mode: 'error',
-                error: error instanceof Error ? error.message : String(error),
-                currentStep: '初始化失敗',
+                mode: 'idle',
+                metricHints: this.getDefaultHints(),
+                error: null,
+                currentStep: '準備就緒（離線模式）',
             });
         }
+    }
+
+    /**
+     * 取得本地 fallback hints（不需要 MCP）
+     */
+    private getDefaultHints() {
+        return [
+            {
+                category: '🔥 資源使用',
+                suggestions: [
+                    {
+                        text: 'API 的 CPU 使用率',
+                        promql: 'rate(container_cpu_usage_seconds_total{namespace="production",pod=~"api-.*"}[5m])',
+                        description: '監控服務的 CPU 使用情況',
+                    },
+                    {
+                        text: 'API 的記憶體使用量',
+                        promql: 'container_memory_usage_bytes{namespace="production",pod=~"api-.*"}',
+                        description: '監控服務的記憶體消耗',
+                    },
+                ],
+            },
+            {
+                category: '🌐 請求流量',
+                suggestions: [
+                    {
+                        text: '每秒請求數 (QPS)',
+                        promql: 'sum(rate(http_requests_total[5m]))',
+                        description: '監控整體請求流量',
+                    },
+                    {
+                        text: 'P95 延遲',
+                        promql: 'histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))',
+                        description: '監控 95% 請求的延遲',
+                    },
+                ],
+            },
+            {
+                category: '❌ 錯誤監控',
+                suggestions: [
+                    {
+                        text: '5xx 錯誤率',
+                        promql: 'sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m]))',
+                        description: '監控錯誤比例',
+                    },
+                ],
+            },
+        ];
     }
 
     /**
@@ -121,6 +188,38 @@ export class MetricsExplorerWorkflow {
 
             // Step 2: 查詢指標數據
             this.updateState({ currentStep: '正在查詢數據...' });
+            const queryResult = await queryMetricsNode(this.state, this.mcpManager);
+            this.updateState(queryResult);
+
+            this.updateState({
+                isLoading: false,
+                currentStep: '查詢完成',
+            });
+        } catch (error) {
+            this.updateState({
+                isLoading: false,
+                mode: 'error',
+                error: error instanceof Error ? error.message : String(error),
+                currentStep: '查詢失敗',
+            });
+        }
+    }
+
+    /**
+     * 直接執行 PromQL（用於預設查詢，跳過翻譯）
+     */
+    async executePromQL(promql: string, explanation: string = ''): Promise<void> {
+        this.updateState({
+            promql,
+            queryExplanation: explanation,
+            translationConfidence: 1.0,
+            mode: 'querying',
+            isLoading: true,
+            currentStep: '正在查詢數據...',
+            error: null,
+        });
+
+        try {
             const queryResult = await queryMetricsNode(this.state, this.mcpManager);
             this.updateState(queryResult);
 
@@ -198,12 +297,12 @@ export class MetricsExplorerWorkflow {
     }
 
     /**
-     * 執行 AI 診斷
+     * 執行 AI 診斷（使用 isDiagnosing 避免圖表閃爍）
      */
     async diagnose(): Promise<void> {
         this.updateState({
             mode: 'diagnosing',
-            isLoading: true,
+            isDiagnosing: true,  // 使用 isDiagnosing，不影響圖表
             currentStep: '正在進行 AI 診斷...',
         });
 
@@ -211,10 +310,10 @@ export class MetricsExplorerWorkflow {
             const diagnosisResult = await diagnosisNode(this.state, this.mcpManager);
             this.updateState(diagnosisResult);
 
-            this.updateState({ isLoading: false });
+            this.updateState({ isDiagnosing: false });
         } catch (error) {
             this.updateState({
-                isLoading: false,
+                isDiagnosing: false,
                 mode: 'error',
                 error: error instanceof Error ? error.message : String(error),
                 currentStep: '診斷失敗',

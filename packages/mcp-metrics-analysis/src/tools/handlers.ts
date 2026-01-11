@@ -459,7 +459,7 @@ export class MetricsToolsHandler {
     }
 
     /**
-     * 生成查詢建議
+     * 生成查詢建議（本地生成，不需要 OpenAI）
      */
     async suggestQueryHints(input: {
         availableMetrics?: string[];
@@ -469,17 +469,66 @@ export class MetricsToolsHandler {
         };
     }): Promise<object> {
         try {
-            const { OpenAIClient } = await import('../clients/openai.js');
-            const openaiClient = new OpenAIClient();
+            // 使用本地生成的建議（不需要 OpenAI）
+            const namespace = input.userContext?.defaultNamespace || 'production';
+            const service = input.userContext?.defaultService || 'api';
 
-            const result = await openaiClient.suggestQueryHints({
-                availableMetrics: input.availableMetrics,
-                userContext: input.userContext,
-            });
+            const hints = [
+                {
+                    category: '🔥 資源使用',
+                    suggestions: [
+                        {
+                            text: `${service} 的 CPU 使用率`,
+                            promql: `rate(container_cpu_usage_seconds_total{namespace="${namespace}",pod=~"${service}-.*"}[5m])`,
+                            description: '監控服務的 CPU 使用情況',
+                        },
+                        {
+                            text: `${service} 的記憶體使用量`,
+                            promql: `container_memory_usage_bytes{namespace="${namespace}",pod=~"${service}-.*"}`,
+                            description: '監控服務的記憶體消耗',
+                        },
+                        {
+                            text: `${namespace} 資源 Top 5`,
+                            promql: `topk(5, sum by(pod)(rate(container_cpu_usage_seconds_total{namespace="${namespace}"}[5m])))`,
+                            description: '找出資源使用最高的 Pods',
+                        },
+                    ],
+                },
+                {
+                    category: '🌐 請求流量',
+                    suggestions: [
+                        {
+                            text: `${service} 的每秒請求數`,
+                            promql: `sum(rate(http_requests_total{namespace="${namespace}",service="${service}"}[5m]))`,
+                            description: '監控服務的請求流量',
+                        },
+                        {
+                            text: `${service} 的 P95 延遲`,
+                            promql: `histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="${namespace}",service="${service}"}[5m])) by (le))`,
+                            description: '監控 95% 請求的延遲',
+                        },
+                    ],
+                },
+                {
+                    category: '❌ 錯誤監控',
+                    suggestions: [
+                        {
+                            text: `${service} 的 5xx 錯誤率`,
+                            promql: `sum(rate(http_requests_total{namespace="${namespace}",service="${service}",status=~"5.."}[5m])) / sum(rate(http_requests_total{namespace="${namespace}",service="${service}"}[5m]))`,
+                            description: '監控服務的錯誤比例',
+                        },
+                        {
+                            text: `${namespace} 錯誤 Top 5`,
+                            promql: `topk(5, sum by(service)(rate(http_requests_total{namespace="${namespace}",status=~"5.."}[5m])))`,
+                            description: '找出錯誤最多的服務',
+                        },
+                    ],
+                },
+            ];
 
             return {
                 success: true,
-                ...result,
+                hints,
             };
         } catch (error) {
             return {

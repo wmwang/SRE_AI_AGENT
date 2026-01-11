@@ -143,8 +143,11 @@ export interface MetricsExplorerState {
     /** 當前步驟描述 */
     currentStep: string;
 
-    /** 是否正在載入 */
+    /** 是否正在載入（會影響整體 UI） */
     isLoading: boolean;
+
+    /** 是否正在診斷中（只影響診斷區） */
+    isDiagnosing: boolean;
 }
 
 /**
@@ -190,6 +193,7 @@ export function createInitialState(): MetricsExplorerState {
         error: null,
         currentStep: '等待使用者輸入...',
         isLoading: false,
+        isDiagnosing: false,
     };
 }
 

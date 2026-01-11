@@ -169,6 +169,8 @@ export async function queryMetricsNode(
         const end = Math.floor(Date.now() / 1000);
         const start = end - parseDuration(state.timeRange.duration);
 
+        console.error('[Metrics Explorer] Querying:', state.promql, { start, end });
+
         const result = await mcpManager.callTool('metrics', 'query_metrics_range', {
             promql: state.promql,
             start,
@@ -176,11 +178,25 @@ export async function queryMetricsNode(
             step: '60s',
         });
 
-        const data = result.content?.[0]?.text
-            ? JSON.parse(result.content[0].text)
-            : {};
+        console.error('[Metrics Explorer] MCP Result:', JSON.stringify(result).slice(0, 500));
 
-        if (!data.success) {
+        // 處理兩種可能的回應格式：
+        // 1. 直接返回數據: { success: true, results: [...] }
+        // 2. MCP 格式: { content: [{ text: '{"success": true, ...}' }] }
+        let data: any;
+        if (result.content?.[0]?.text) {
+            data = JSON.parse(result.content[0].text);
+        } else if (result.success !== undefined) {
+            // 直接返回的數據
+            data = result;
+        } else {
+            data = {};
+        }
+
+        console.error('[Metrics Explorer] Parsed data:', JSON.stringify(data).slice(0, 500));
+
+        // 允許 success 為 true 或者有 results
+        if (data.success === false) {
             return {
                 error: data.error || '查詢失敗',
                 mode: 'error',
@@ -203,6 +219,7 @@ export async function queryMetricsNode(
             error: null,
         };
     } catch (error) {
+        console.error('[Metrics Explorer] Query error:', error);
         return {
             error: error instanceof Error ? error.message : String(error),
             mode: 'error',
@@ -228,6 +245,8 @@ export async function diagnosisNode(
     }
 
     try {
+        console.error('[Metrics Explorer] Diagnosing:', state.promql);
+
         const result = await mcpManager.callTool('metrics', 'analyze_metrics_health', {
             promql: state.promql,
             timeRange: {
@@ -236,11 +255,21 @@ export async function diagnosisNode(
             },
         });
 
-        const data = result.content?.[0]?.text
-            ? JSON.parse(result.content[0].text)
-            : {};
+        console.error('[Metrics Explorer] Diagnosis Result:', JSON.stringify(result).slice(0, 500));
 
-        if (!data.success) {
+        // 處理兩種格式
+        let data: any;
+        if (result.content?.[0]?.text) {
+            data = JSON.parse(result.content[0].text);
+        } else if (result.success !== undefined) {
+            data = result;
+        } else {
+            data = {};
+        }
+
+        console.error('[Metrics Explorer] Diagnosis Data:', JSON.stringify(data).slice(0, 500));
+
+        if (data.success === false) {
             return {
                 error: data.error || '診斷失敗',
                 mode: 'error',
@@ -248,14 +277,23 @@ export async function diagnosisNode(
             };
         }
 
+        // 合併 analysis 和 recommendations
+        const diagnosis = {
+            summary: data.analysis?.summary || '無分析結果',
+            findings: data.analysis?.findings || [],
+            trend: data.analysis?.trend,
+            recommendations: data.recommendations || [],
+        };
+
         return {
             healthStatus: data.health || 'unknown',
-            diagnosis: data.analysis || null,
+            diagnosis,
             currentStep: `診斷完成：${data.health?.toUpperCase() || 'UNKNOWN'}`,
             mode: 'diagnosing',
             error: null,
         };
     } catch (error) {
+        console.error('[Metrics Explorer] Diagnosis error:', error);
         return {
             error: error instanceof Error ? error.message : String(error),
             mode: 'error',
