@@ -24,8 +24,10 @@ if "%OPENAI_MODEL%"=="" (
 ) else (
   echo   OpenAI Model: %OPENAI_MODEL%
 )
-if "%PROMETHEUS_ENDPOINT%"=="" (
+if "%MOCK_PROMETHEUS%"=="true" (
   echo   Prometheus: Mock Mode (Simulated Data)
+) else if "%PROMETHEUS_ENDPOINT%"=="" (
+  echo   Prometheus: http://localhost:9090 (Default)
 ) else (
   echo   Prometheus: %PROMETHEUS_ENDPOINT%
 )

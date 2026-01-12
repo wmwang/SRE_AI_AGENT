@@ -138,30 +138,24 @@ start-cli.bat
 #### 📝 LLM 通訊日誌 (推薦用於開發)
 記錄所有與 LLM 的對話內容，方便 debug AI 邏輯：
 
-**Mac/Linux:**
+**啟用方式：**
 ```bash
+# Mac/Linux
 export DEBUG_LLM=true
 ./start-cli.sh
 
-# 查看日誌
-tail -f ~/.sre-agent/llm-debug.log
-```
-
-**Windows:**
-```batch
+# Windows
 set DEBUG_LLM=true
 start-cli.bat
-
-# 查看日誌
-type %USERPROFILE%\.sre-agent\llm-debug.log
 ```
+
+**查看日誌：**
+日誌會自動寫入專案目錄下的 `logs/llm-debug.log`，直接用 VS Code 或任何文字編輯器開啟即可。
 
 日誌內容包含：
 - 📝 **Prompt**：發送給 LLM 的完整提示詞
 - ✅ **Response**：LLM 的回應內容
 - ℹ️ **Metadata**：額外的上下文資訊
-
-日誌檔案位置：`~/.sre-agent/llm-debug.log`
 
 #### 🧪 Mock 模式 (模擬 Prometheus)
 如果你**沒有**真實的 Prometheus 環境，可以開啟 Mock 模式，系統會使用模擬數據讓你體驗功能：
