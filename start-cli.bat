@@ -36,6 +36,11 @@ if "%SHARED_MEMORY_PATH%"=="" (
 ) else (
   echo   Shared Memory: %SHARED_MEMORY_PATH%
 )
+if "%DEBUG_LLM%"=="true" (
+  echo   LLM Debug: Enabled (logs/llm-debug.log)
+) else (
+  echo   LLM Debug: Disabled (set DEBUG_LLM=true to enable)
+)
 echo.
 
 REM 2. 確保所有 packages 都已建置
