@@ -60,6 +60,15 @@ export class OpenAIClient {
         ];
 
         try {
+            // Log the complete prompt
+            llmLogger.log('nl-to-promql', {
+                prompt: `[System Prompt]\n${systemPrompt}\n\n[Examples]\n${JSON.stringify(examples, null, 2)}\n\n[User Query]\n${input.naturalQuery}`,
+                metadata: {
+                    availableMetricsCount: input.availableMetrics?.length || 0,
+                    hasUserContext: !!input.userContext
+                }
+            });
+
             const response = await this.client.chat.completions.create({
                 model: this.model,
                 messages,
@@ -71,6 +80,9 @@ export class OpenAIClient {
             if (!content) {
                 throw new Error('No response from OpenAI');
             }
+
+            // Log the response
+            llmLogger.log('nl-to-promql', { response: content });
 
             const result = JSON.parse(content);
 

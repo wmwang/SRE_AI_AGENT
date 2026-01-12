@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
 
 /**
  * LLM Logger - 記錄所有 LLM 通訊以便 Debug
@@ -9,7 +8,8 @@ import os from 'os';
  * 
  * 使用環境變數控制：
  * - DEBUG_LLM=true - 啟用日誌記錄
- * - LLM_LOG_PATH - 自訂日誌路徑（預設：~/.sre-agent/llm-debug.log）
+ * - PROJECT_ROOT - 專案根目錄（由啟動腳本設定）
+ * - LLM_LOG_PATH - 自訂日誌路徑（預設：<PROJECT_ROOT>/logs/llm-debug.log）
  */
 export class LLMLogger {
     private static instance: LLMLogger;
@@ -19,7 +19,9 @@ export class LLMLogger {
     private constructor() {
         this.enabled = process.env.DEBUG_LLM === 'true';
 
-        const defaultPath = path.join(os.homedir(), '.sre-agent', 'llm-debug.log');
+        // 使用啟動腳本設定的 PROJECT_ROOT 環境變數
+        const projectRoot = process.env.PROJECT_ROOT || process.cwd();
+        const defaultPath = path.join(projectRoot, 'logs', 'llm-debug.log');
         this.logPath = process.env.LLM_LOG_PATH || defaultPath;
 
         if (this.enabled) {
