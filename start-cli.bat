@@ -3,6 +3,9 @@ setlocal EnableDelayedExpansion
 
 REM SRE AI Agent Windows Startup Script
 
+REM 設定專案根目錄
+set "PROJECT_ROOT=%CD%"
+
 REM 1. 檢查環境變數
 if "%OPENAI_API_KEY%"=="" (
   echo [ERROR] OPENAI_API_KEY environment variable is not set.

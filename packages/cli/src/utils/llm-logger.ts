@@ -1,14 +1,13 @@
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 /**
  * LLM Logger - 記錄所有 LLM 通訊以便 Debug
  * 
  * 使用環境變數控制：
  * - DEBUG_LLM=true - 啟用日誌記錄
- * - LLM_LOG_PATH - 自訂日誌路徑（預設：./logs/llm-debug.log）
+ * - PROJECT_ROOT - 專案根目錄（由啟動腳本設定）
+ * - LLM_LOG_PATH - 自訂日誌路徑（預設：<PROJECT_ROOT>/logs/llm-debug.log）
  */
 export class LLMLogger {
     private static instance: LLMLogger;
@@ -18,12 +17,8 @@ export class LLMLogger {
     private constructor() {
         this.enabled = process.env.DEBUG_LLM === 'true';
 
-        // 在 ESM 中取得 __dirname
-        const __filename = fileURLToPath(import.meta.url);
-        const __dirname = dirname(__filename);
-
-        // 計算專案根目錄：從 cli/dist/utils 往上三層到專案根目錄
-        const projectRoot = path.resolve(__dirname, '..', '..', '..', '..');
+        // 使用啟動腳本設定的 PROJECT_ROOT 環境變數
+        const projectRoot = process.env.PROJECT_ROOT || process.cwd();
         const defaultPath = path.join(projectRoot, 'logs', 'llm-debug.log');
         this.logPath = process.env.LLM_LOG_PATH || defaultPath;
 

@@ -2,6 +2,9 @@
 
 # SRE AI Agent 啟動腳本
 
+# 設定專案根目錄
+export PROJECT_ROOT="$(pwd)"
+
 # 檢查環境變數
 if [ -z "$OPENAI_API_KEY" ]; then
   echo "❌ 錯誤: OPENAI_API_KEY 環境變數未設定"
