@@ -68,7 +68,10 @@ async function main() {
         }
     };
 
-    // 渲染 UI
+    // 清除畫面，創造全螢幕效果
+    process.stdout.write('\x1b[2J\x1b[H');  // ANSI: 清除畫面 + 游標移到左上角
+
+    // 渲染 UI（全螢幕模式）
     const { rerender, unmount } = render(
         <App
             onQuery={handleQuery}
@@ -78,7 +81,8 @@ async function main() {
             currentStep={currentStep}
             response={response}
             error={error}
-        />
+        />,
+        { exitOnCtrlC: false }  // 讓我們自己處理 Ctrl+C
     );
 
     // 定期更新 UI

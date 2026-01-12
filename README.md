@@ -23,27 +23,85 @@
 - **CLI Agent**：基於 LangGraph + Ink 的終端介面
 - **Web Interface**：Web 管理介面
 
-## 🚀 快速開始
+## 🚀 快速開始 (Quick Start)
 
-### 前置需求
+### 1. 環境準備 (Prerequisites)
 
-- Node.js >= 18.0.0
-- pnpm >= 8.0.0
+本系統需要 **Node.js** (v18+) 環境。
 
-### 安裝
+#### 步驟 1：安裝 Node.js
+請確認你的電腦已安裝 Node.js (建議 v18 或 v20 LTS 版本)。
+> 檢查方式：打開終端機 (Terminal) 輸入 `node -v`
+
+#### 步驟 2：安裝 pnpm (必要)
+本專案使用 `pnpm` 進行套件管理 (因為是 Monorepo 架構，能大幅節省硬碟空間)。
+如果你的電腦還沒安裝 pnpm，請執行以下指令安裝：
 
 ```bash
-# 安裝依賴
+# 使用 npm 安裝 pnpm
+npm install -g pnpm
+
+# 驗證安裝
+pnpm -v
+```
+
+---
+
+### 2. 安裝與建置 (Installation)
+
+```bash
+# 1. 複製專案
+git clone <repository_url>
+cd SRE_AI_AGENT
+
+# 2. 安裝所有依賴 (會自動處理所有 packages)
 pnpm install
 
-# 建置所有 packages
+# 3. 建置專案
 pnpm build
 ```
 
-### 開發
+---
+
+### 3. 設定環境變數 (Configuration)
+
+你需要設定以下變數才能讓 Agent 正常運作。可以直接在終端機執行，或寫入 `~/.zshrc` / `.env` 檔案。
 
 ```bash
-# 開發模式
+# [必要] OpenAI API Key (用於 AI 分析與生成)
+export OPENAI_API_KEY="sk-..."
+
+# [選填] Prometheus 端點 (Metrics Explorer 需要)
+# 若無真實 Prometheus，可略過此行，系統預設會使用 Mock 模式
+export PROMETHEUS_ENDPOINT="http://localhost:9090"
+
+# [選填] K8s 設定 (SLO Workflow 需要)
+# 通常系統會自動讀取 ~/.kube/config，若位置不同請設定：
+export KUBECONFIG="~/.kube/config"
+```
+
+---
+
+### 4. 啟動系統 (Running)
+
+我們提供了一個啟動腳本，直接執行即可進入 CLI 介面：
+
+```bash
+# 賦予執行權限 (初次執行需要)
+chmod +x start-cli.sh
+
+# 啟動 Agent
+./start-cli.sh
+```
+
+---
+
+### 5. 開發指令 (Development)
+
+如果你是開發者，可以使用以下指令：
+
+```bash
+# 開發模式 (Watch Mode)
 pnpm dev
 
 # 執行測試

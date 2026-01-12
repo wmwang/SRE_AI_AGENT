@@ -8,23 +8,23 @@ interface MainMenuProps {
 export function MainMenu({ onSelectCallback }: MainMenuProps) {
     const items = [
         {
-            label: '🤖 自然語言查詢 (AI 助手)',
+            label: '[1] AI Query - Natural Language Assistant',
             value: 'ai',
         },
         {
-            label: '🎯 SLO 自動生成精靈',
+            label: '[2] SLO Workflow - Generate SLO from K8s YAML',
             value: 'slo_workflow',
         },
         {
-            label: '📊 Metrics Explorer (自然語言查詢指標)',
+            label: '[3] Metrics Explorer - Query Prometheus',
             value: 'metrics_explorer',
         },
         {
-            label: '🛠️  瀏覽工具箱 (手動模式)',
+            label: '[4] Tool Browser - Browse MCP Tools',
             value: 'tools',
         },
         {
-            label: '❌ 退出',
+            label: '[x] Exit',
             value: 'exit',
         },
     ];
@@ -32,7 +32,7 @@ export function MainMenu({ onSelectCallback }: MainMenuProps) {
     return (
         <Box flexDirection="column">
             <Box marginBottom={1}>
-                <Text bold>請選擇操作模式：</Text>
+                <Text bold>Select Mode:</Text>
             </Box>
             <SelectInput
                 items={items}

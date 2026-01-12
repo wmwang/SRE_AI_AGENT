@@ -1,11 +1,11 @@
 import { Box, Text } from 'ink';
 
 /**
- * ASCII Art Logo for AI Ops Agent
- * 3D-style rendering with gradient colors
+ * ASCII Art Logo for AI SRE Agent
+ * Unicode block version for terminals with good Unicode support
  */
 export function Logo() {
-    // 3D ASCII art logo - AI OPS AGENT
+    // 3D Unicode block logo - AI SRE AGENT
     const logoLines = [
         " █████╗ ██╗    ███████╗██████╗ ███████╗     █████╗  ██████╗ ███████╗███╗   ██╗████████╗",
         "██╔══██╗██║    ██╔════╝██╔══██╗██╔════╝    ██╔══██╗██╔════╝ ██╔════╝████╗  ██║╚══██╔══╝",
@@ -15,8 +15,7 @@ export function Logo() {
         "╚═╝  ╚═╝╚═╝    ╚══════╝╚═╝  ╚═╝╚══════╝    ╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝   ",
     ];
 
-    // Color gradient logic: Cyan (#00FFFF) -> Blue (#0000FF) -> Magenta (#FF00FF)
-    // We want a solid feel, so we use a smooth gradient
+    // Color gradient: Cyan -> Magenta
     const startColor = { r: 0, g: 255, b: 255 }; // Cyan
     const endColor = { r: 255, g: 0, b: 255 };   // Magenta
 
@@ -36,18 +35,17 @@ export function Logo() {
                 </Text>
             ))}
 
-            {/* Tagline - 使用相同寬度對齊 */}
+            {/* Tagline */}
             <Box marginTop={1}>
-                <Text dimColor>    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</Text>
+                <Text dimColor>    =====================================================================================================</Text>
             </Box>
-            <Box>
-                <Text>                                        </Text>
-                <Text color="yellow">✨ </Text>
+            <Box justifyContent="center" width={90}>
+                <Text color="yellow">* </Text>
                 <Text>Your Intelligent SRE Assistant</Text>
-                <Text color="yellow"> ✨</Text>
+                <Text color="yellow"> *</Text>
             </Box>
             <Box marginBottom={1}>
-                <Text dimColor>    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</Text>
+                <Text dimColor>    =====================================================================================================</Text>
             </Box>
         </Box>
     );
@@ -59,10 +57,11 @@ export function Logo() {
 export function LogoCompact() {
     return (
         <Box flexDirection="column" marginBottom={1}>
-            <Box borderStyle="double" borderColor="cyan" padding={1}>
-                <Text bold color="cyan">🤖 AI SRE AGENT</Text>
+            <Box borderStyle="single" borderColor="cyan" padding={1}>
+                <Text bold color="cyan">[AI] SRE AGENT</Text>
                 <Text> - Your Intelligent SRE Assistant</Text>
             </Box>
         </Box>
     );
 }
+

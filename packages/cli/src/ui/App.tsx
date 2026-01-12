@@ -4,6 +4,7 @@ import Spinner from 'ink-spinner';
 import TextInput from 'ink-text-input';
 import { Logo } from './Logo.js';
 import { MainMenu } from './MainMenu.js';
+import { WelcomePanel } from './WelcomePanel.js';
 import { ToolBrowser } from './ToolBrowser.js';
 import { ToolPreview } from './ToolPreview.js';
 import { ParamForm } from './ParamForm.js';
@@ -52,6 +53,9 @@ export function App({ onQuery, onExecuteTool, mcpManager, isProcessing, currentS
             <Box flexDirection="column" padding={1}>
                 {/* Big 3D Logo */}
                 <Logo />
+
+                {/* Welcome Panel - 功能介紹 */}
+                <WelcomePanel />
 
                 {/* Menu */}
                 <MainMenu onSelectCallback={(value) => {
