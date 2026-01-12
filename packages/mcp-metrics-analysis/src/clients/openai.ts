@@ -69,14 +69,21 @@ export class OpenAIClient {
                 }
             });
 
-            const response = await this.client.chat.completions.create({
+            const stream = await this.client.chat.completions.create({
                 model: this.model,
                 messages,
-                temperature: 0, // 確保輸出一致性
-                response_format: { type: 'json_object' }, // JSON mode
+                temperature: 0,
+                stream: true,  // SSE 串流
             });
 
-            const content = response.choices[0]?.message?.content;
+            // 收集串流回應
+            let fullContent = '';
+            for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta?.content;
+                if (delta) fullContent += delta;
+            }
+
+            const content = fullContent;
             if (!content) {
                 throw new Error('No response from OpenAI');
             }
@@ -388,17 +395,24 @@ export class OpenAIClient {
                 metadata: { promql: input.promql, dataPointsCount: dataSummary.count }
             });
 
-            const response = await this.client.chat.completions.create({
+            const stream = await this.client.chat.completions.create({
                 model: this.model,
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userMessage },
                 ],
                 temperature: 0,
-                response_format: { type: 'json_object' },
+                stream: true,  // SSE 串流
             });
 
-            const content = response.choices[0]?.message?.content;
+            // 收集串流回應
+            let fullContent = '';
+            for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta?.content;
+                if (delta) fullContent += delta;
+            }
+
+            const content = fullContent;
             if (!content) {
                 throw new Error('No response from OpenAI');
             }
