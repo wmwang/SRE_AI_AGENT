@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
 /**
  * LLM Logger - 記錄所有 LLM 通訊以便 Debug
@@ -16,9 +18,11 @@ export class LLMLogger {
     private constructor() {
         this.enabled = process.env.DEBUG_LLM === 'true';
 
+        // 在 ESM 中取得 __dirname
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = dirname(__filename);
+
         // 計算專案根目錄：從 cli/dist/utils 往上三層到專案根目錄
-        // __dirname 範例：/path/to/SRE_AI_AGENT/packages/cli/dist/utils
-        // 專案根目錄：/path/to/SRE_AI_AGENT
         const projectRoot = path.resolve(__dirname, '..', '..', '..', '..');
         const defaultPath = path.join(projectRoot, 'logs', 'llm-debug.log');
         this.logPath = process.env.LLM_LOG_PATH || defaultPath;
