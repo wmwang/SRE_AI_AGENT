@@ -84,14 +84,21 @@ export KUBECONFIG="~/.kube/config"
 
 ### 4. 啟動系統 (Running)
 
-我們提供了一個啟動腳本，直接執行即可進入 CLI 介面：
+我們提供了啟動腳本，直接執行即可進入 CLI 介面：
 
+**Mac/Linux:**
 ```bash
 # 賦予執行權限 (初次執行需要)
 chmod +x start-cli.sh
 
 # 啟動 Agent
 ./start-cli.sh
+```
+
+**Windows:**
+```batch
+# 直接點擊 start-cli.bat 或在 CMD/PowerShell 執行：
+start-cli.bat
 ```
 
 ---
@@ -110,6 +117,40 @@ pnpm test
 # 類型檢查
 pnpm typecheck
 ```
+
+### 6. 進階模式 (Advanced Modes)
+
+#### 🐛 Debug 模式
+如果你遇到問題，可以開啟 Debug 模式查看詳細日誌：
+
+**Mac/Linux:**
+```bash
+export DEBUG=true
+./start-cli.sh
+```
+
+**Windows:**
+```batch
+set DEBUG=true
+start-cli.bat
+```
+
+#### 🧪 Mock 模式 (模擬 Prometheus)
+如果你**沒有**真實的 Prometheus 環境，可以開啟 Mock 模式，系統會使用模擬數據讓你體驗功能：
+
+**Mac/Linux:**
+```bash
+export MOCK_PROMETHEUS=true
+./start-cli.sh
+```
+
+**Windows:**
+```batch
+set MOCK_PROMETHEUS=true
+start-cli.bat
+```
+
+---
 
 ## 📦 Monorepo 結構
 
