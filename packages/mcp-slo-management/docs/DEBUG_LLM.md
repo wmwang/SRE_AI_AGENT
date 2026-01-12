@@ -1,82 +1,74 @@
 # 如何查看 LLM 請求與回應
 
-## 啟用 DEBUG 模式
+本系統已採用統一的 **LLM Logger** 機制，將所有與 OpenAI 的交互紀錄寫入集中的日誌檔案，以確保不干擾 CLI 介面並提供完整的除錯資訊。
 
-設定環境變數 `DEBUG_LLM=true` 即可查看所有送給 OpenAI 的資料：
+## 1. 啟用 DEBUG 模式
+
+設定環境變數 `DEBUG_LLM=true` 即可啟用詳細日誌：
 
 ```bash
-# 方式 1：執行測試時啟用
-DEBUG_LLM=true pnpm --filter @sre-agent/mcp-slo-management test:integration
+# 方式 1：啟動 CLI 時啟用
+DEBUG_LLM=true ./start-cli.sh
 
-# 方式 2：啟動 server 時啟用
-DEBUG_LLM=true pnpm --filter @sre-agent/mcp-slo-management start
-
-# 方式 3：在環境變數中設定（持續）
+# 方式 2：在開發時啟用
 export DEBUG_LLM=true
-pnpm --filter @sre-agent/mcp-slo-management test:integration
+# 然後執行測試或啟動應用
 ```
 
-## 輸出內容
+## 2. 查看日誌
 
-啟用後，會在 stderr 輸出以下資訊：
+所有 LLM 相關的日誌都會寫入專案根目錄下的 `logs/llm-debug.log`。
 
-### 1. REQUEST DEBUG
-顯示送給 LLM 的完整內容：
-- **System Prompt**：系統指令（告訴 AI 扮演什麼角色、如何回應）
-- **User Prompt**：用戶輸入（包含 K8s manifests）
+### 即時查看
 
-### 2. RESPONSE DEBUG
-顯示 LLM 返回的原始回應：
-- 未經處理的完整回應
-- 可以看到是否有 markdown wrapper
-- 可以檢查 JSON 格式是否正確
+```bash
+# 在新的終端機視窗執行
+tail -f logs/llm-debug.log
+```
 
-## 範例輸出
+## 3. 日誌格式
+
+日誌採用結構化的文字格式，方便閱讀與解析。
+
+### Request Log
+記錄發送給 LLM 的完整 Prompt。
 
 ```
-========== LLM REQUEST DEBUG ==========
-System Prompt:
-你是一位資深的 SRE 專家與架構師。
-你的任務是分析提供的 Kubernetes manifests...
+[2024-01-13T12:00:00.000Z] [REQUEST] [metrics-health]
+Metadata: { model: 'gpt-4o-mini', stream: true }
 
----
-User Prompt:
+--- User Message ---
 <task>
-K8s Manifests:
-
-apiVersion: apps/v1
-kind: Deployment
 ...
 </task>
-========== END REQUEST DEBUG ==========
+```
 
-========== LLM RESPONSE DEBUG ==========
-Raw Response:
+### Response Log
+記錄 LLM 返回的完整內容（包含 SSE 串流Metadata）。
+
+```
+[2024-01-13T12:00:05.000Z] [RESPONSE] [metrics-health]
+Metadata: { finishReason: 'stop', contentLength: 1234, streamMode: true }
+
 {
-  "slos": [
-    {
-      "id": "slo-001",
-      "name": "API Availability",
-      ...
-    }
-  ]
+  "health": "warning",
+  "analysis": { ... }
 }
-========== END RESPONSE DEBUG ==========
 ```
 
-## 用途
+### Error Log
+記錄 API 呼叫錯誤或解析錯誤。
 
-1. **檢查 Prompt 是否正確**：確認送給 LLM 的指令符合預期
-2. **Debug AI 回應問題**：當 JSON 解析失敗時，查看原始回應
-3. **優化 Prompt**：根據實際輸出調整 system prompt
-4. **驗證資料傳遞**：確認 K8s manifests 完整傳送給 LLM
-
-## 關閉 DEBUG
-
-```bash
-# 取消環境變數
-unset DEBUG_LLM
-
-# 或設為 false
-export DEBUG_LLM=false
 ```
+[2024-01-13T12:00:10.000Z] [ERROR] [metrics-health]
+Metadata: { errorType: 'APIError' }
+
+Error: 401 Unauthorized ...
+```
+
+## 4. 這有什麼用？
+
+1. **檢查 Prompt 結構**：確認 System Prompt 和 User Prompt 是否正確組合。
+2. **驗證 SSE 串流**：確認系統是否正確使用了 `stream: true`。
+3. **除錯 JSON 解析**：當 UI 顯示錯誤時，查看 `Raw Response` 找出 LLM 是否輸出格式錯誤的 JSON。
+4. **效能監控**：透過時間戳記觀察回應延遲。

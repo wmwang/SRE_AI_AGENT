@@ -5,6 +5,7 @@
  */
 
 import type { MetricsExplorerState, MetricsSeries } from './state.js';
+import { debugLog } from '../../utils/debug.js';
 
 // 模擬 MCPManager 類型（實際會從 cli 匯入）
 interface MCPManager {
@@ -169,7 +170,7 @@ export async function queryMetricsNode(
         const end = Math.floor(Date.now() / 1000);
         const start = end - parseDuration(state.timeRange.duration);
 
-        console.error('[Metrics Explorer] Querying:', state.promql, { start, end });
+        debugLog('[Metrics Explorer] Querying:', state.promql, { start, end });
 
         const result = await mcpManager.callTool('metrics', 'query_metrics_range', {
             promql: state.promql,
@@ -178,7 +179,7 @@ export async function queryMetricsNode(
             step: '60s',
         });
 
-        console.error('[Metrics Explorer] MCP Result:', JSON.stringify(result).slice(0, 500));
+        debugLog('[Metrics Explorer] MCP Result:', JSON.stringify(result).slice(0, 500));
 
         // 處理兩種可能的回應格式：
         // 1. 直接返回數據: { success: true, results: [...] }
@@ -193,7 +194,7 @@ export async function queryMetricsNode(
             data = {};
         }
 
-        console.error('[Metrics Explorer] Parsed data:', JSON.stringify(data).slice(0, 500));
+        debugLog('[Metrics Explorer] Parsed data:', JSON.stringify(data).slice(0, 500));
 
         // 允許 success 為 true 或者有 results
         if (data.success === false) {
@@ -219,7 +220,7 @@ export async function queryMetricsNode(
             error: null,
         };
     } catch (error) {
-        console.error('[Metrics Explorer] Query error:', error);
+        debugLog('[Metrics Explorer] Query error:', error);
         return {
             error: error instanceof Error ? error.message : String(error),
             mode: 'error',
@@ -245,7 +246,7 @@ export async function diagnosisNode(
     }
 
     try {
-        console.error('[Metrics Explorer] Diagnosing:', state.promql);
+        debugLog('[Metrics Explorer] Diagnosing:', state.promql);
 
         const result = await mcpManager.callTool('metrics', 'analyze_metrics_health', {
             promql: state.promql,
@@ -255,7 +256,7 @@ export async function diagnosisNode(
             },
         });
 
-        console.error('[Metrics Explorer] Diagnosis Result:', JSON.stringify(result).slice(0, 500));
+        debugLog('[Metrics Explorer] Diagnosis Result:', JSON.stringify(result).slice(0, 500));
 
         // 處理兩種格式
         let data: any;
@@ -267,7 +268,7 @@ export async function diagnosisNode(
             data = {};
         }
 
-        console.error('[Metrics Explorer] Diagnosis Data:', JSON.stringify(data).slice(0, 500));
+        debugLog('[Metrics Explorer] Diagnosis Data:', JSON.stringify(data).slice(0, 500));
 
         if (data.success === false) {
             return {
@@ -293,7 +294,7 @@ export async function diagnosisNode(
             error: null,
         };
     } catch (error) {
-        console.error('[Metrics Explorer] Diagnosis error:', error);
+        debugLog('[Metrics Explorer] Diagnosis error:', error);
         return {
             error: error instanceof Error ? error.message : String(error),
             mode: 'error',

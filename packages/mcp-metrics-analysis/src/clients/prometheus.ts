@@ -1,4 +1,5 @@
 import { getConfig } from '../config.js';
+import { mcpLogger } from '../utils/logger.js';
 
 /**
  * Prometheus API 回應型別
@@ -34,7 +35,7 @@ export class PrometheusClient {
         this.mockMode = config.mockMode || false;
 
         if (this.mockMode) {
-            console.error('[Prometheus Client] Running in MOCK MODE');
+            mcpLogger.log('[Prometheus Client] Running in MOCK MODE');
         }
     }
 
@@ -43,7 +44,7 @@ export class PrometheusClient {
      */
     async query(promql: string, time?: number): Promise<PrometheusQueryResult> {
         if (this.mockMode) {
-            console.error('[Prometheus Client] Mocking query:', promql);
+            mcpLogger.log('[Prometheus Client] Mocking query:', promql);
             return {
                 status: 'success',
                 data: {
@@ -113,7 +114,7 @@ export class PrometheusClient {
         step: string = '15s'
     ): Promise<PrometheusQueryResult> {
         if (this.mockMode) {
-            console.error('[Prometheus Client] Mocking queryRange:', promql);
+            mcpLogger.log('[Prometheus Client] Mocking queryRange:', promql);
             return {
                 status: 'success',
                 data: {
@@ -184,7 +185,7 @@ export class PrometheusClient {
      */
     async getMetricNames(): Promise<string[]> {
         if (this.mockMode) {
-            console.error('[Prometheus Client] Mocking getMetricNames');
+            mcpLogger.log('[Prometheus Client] Mocking getMetricNames');
             return [
                 'http_requests_total',
                 'process_cpu_seconds_total',
@@ -199,10 +200,10 @@ export class PrometheusClient {
         }
 
         const url = new URL(`${this.endpoint}/api/v1/label/__name__/values`);
-        console.error('[Prometheus Client] Fetching metric names from:', url.toString());
+        mcpLogger.log('[Prometheus Client] Fetching metric names from:', url.toString());
 
         const response = await fetch(url.toString());
-        console.error('[Prometheus Client] Response status:', response.status, response.statusText);
+        mcpLogger.log('[Prometheus Client] Response status:', response.status, response.statusText);
 
         if (!response.ok) {
             const text = await response.text();
@@ -225,7 +226,7 @@ export class PrometheusClient {
      */
     async getLabelValues(label: string): Promise<string[]> {
         if (this.mockMode) {
-            console.error('[Prometheus Client] Mocking getLabelValues for:', label);
+            mcpLogger.log('[Prometheus Client] Mocking getLabelValues for:', label);
             return ['job-1', 'job-2', 'instance-1', 'instance-2'];
         }
 
@@ -241,7 +242,7 @@ export class PrometheusClient {
 
             return [];
         } catch (error) {
-            console.error('[Prometheus Client] Error in getLabelValues:', error);
+            mcpLogger.log('[Prometheus Client] Error in getLabelValues:', error);
             throw error;
         }
     }
@@ -251,7 +252,7 @@ export class PrometheusClient {
      */
     async getLabels(): Promise<string[]> {
         if (this.mockMode) {
-            console.error('[Prometheus Client] Mocking getLabels');
+            mcpLogger.log('[Prometheus Client] Mocking getLabels');
             return [
                 'namespace',
                 'pod',
@@ -283,7 +284,7 @@ export class PrometheusClient {
 
             return [];
         } catch (error) {
-            console.error('[Prometheus Client] Error in getLabels:', error);
+            mcpLogger.log('[Prometheus Client] Error in getLabels:', error);
             throw error;
         }
     }
@@ -293,7 +294,7 @@ export class PrometheusClient {
      */
     async getLabelValuesEnhanced(labelName: string): Promise<string[]> {
         if (this.mockMode) {
-            console.error('[Prometheus Client] Mocking getLabelValuesEnhanced for:', labelName);
+            mcpLogger.log('[Prometheus Client] Mocking getLabelValuesEnhanced for:', labelName);
 
             // Mock 多租戶 K8s 環境資料
             const mockData: Record<string, string[]> = {

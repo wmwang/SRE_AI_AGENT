@@ -22,6 +22,7 @@ import {
     AnalyzeMetricsHealthSchema,
 } from './tools/schemas.js';
 import { getConfig } from './config.js';
+import { mcpLogger } from './utils/logger.js';
 
 /**
  * Metrics Analysis MCP Server
@@ -311,11 +312,11 @@ class MetricsAnalysisServer {
                     }
 
                     case 'discover_metrics': {
-                        console.error('[Metrics MCP] discover_metrics called');
+                        mcpLogger.log('[Metrics MCP] discover_metrics called');
                         const input = DiscoverMetricsSchema.parse(args);
-                        console.error('[Metrics MCP] Input:', JSON.stringify(input));
+                        mcpLogger.log('[Metrics MCP] Input:', input);
                         const result = await this.handler.discoverMetrics(input);
-                        console.error('[Metrics MCP] Result:', JSON.stringify(result));
+                        mcpLogger.log('[Metrics MCP] Result:', result);
                         return {
                             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
                         };
@@ -402,13 +403,13 @@ class MetricsAnalysisServer {
         const transport = new StdioServerTransport();
         await this.server.connect(transport);
 
-        console.error('Metrics Analysis MCP Server 已啟動');
+        mcpLogger.log('Metrics Analysis MCP Server 已啟動');
     }
 }
 
 // 啟動 Server
 const server = new MetricsAnalysisServer();
 server.start().catch((error: unknown) => {
-    console.error('Failed to start server:', error);
+    mcpLogger.log('Failed to start server:', error);
     process.exit(1);
 });

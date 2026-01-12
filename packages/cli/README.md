@@ -128,6 +128,26 @@ pnpm --filter @sre-agent/cli build
 pnpm --filter @sre-agent/cli test
 ```
 
+## 除錯 (Debugging)
+
+若要啟用除錯日誌，請使用以下環境變數：
+
+```bash
+# 啟用應用程式日誌
+export DEBUG=true
+# 啟用 LLM 詳細日誌
+export DEBUG_LLM=true
+```
+
+**⚠️ 注意**：日誌不會輸出到 Console (以免干擾 UI)，請查看以下檔案：
+- `logs/app-debug.log`: 應用程式除錯資訊 (MCP 連接、錯誤等)
+- `logs/llm-debug.log`: LLM 請求/回應與 Prompt 詳情
+
+```bash
+# 即時查看日誌
+tail -f ../../logs/app-debug.log
+```
+
 ## 限制與未來改進
 
 ### 目前限制

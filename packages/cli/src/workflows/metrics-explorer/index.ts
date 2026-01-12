@@ -8,6 +8,7 @@ import {
     type MetricsExplorerState,
     createInitialState,
 } from './state.js';
+import { debugLog } from '../../utils/debug.js';
 
 import {
     discoverMetricsNode,
@@ -77,7 +78,7 @@ export class MetricsExplorerWorkflow {
                 const discoverResult = await discoverMetricsNode(this.state, this.mcpManager);
                 this.updateState(discoverResult);
             } catch (e) {
-                console.error('[Metrics Explorer] discover failed:', e);
+                debugLog('[Metrics Explorer] discover failed:', e);
             }
 
             // Step 2: 嘗試通過 MCP 生成查詢建議
@@ -91,7 +92,7 @@ export class MetricsExplorerWorkflow {
                     this.updateState({ metricHints: this.getDefaultHints() });
                 }
             } catch (e) {
-                console.error('[Metrics Explorer] hints failed, using fallback:', e);
+                debugLog('[Metrics Explorer] hints failed, using fallback:', e);
                 // 使用本地 fallback hints
                 this.updateState({ metricHints: this.getDefaultHints() });
             }
@@ -103,7 +104,7 @@ export class MetricsExplorerWorkflow {
                 error: null,
             });
         } catch (error) {
-            console.error('[Metrics Explorer] init failed:', error);
+            debugLog('[Metrics Explorer] init failed:', error);
             // 即使失敗也提供 fallback hints
             this.updateState({
                 isLoading: false,

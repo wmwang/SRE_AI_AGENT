@@ -66,15 +66,20 @@ DEBUG_MCP=true DEBUG_LLM=true ./start-cli.sh
 
 # 方式 2: 直接執行
 cd packages/cli
-#DEBUG_MCP=true DEBUG_LLM=true OPENAI_API_KEY=your-key node dist/index.js
-DEBUG_MCP=true DEBUG_LLM=true  node dist/index.js
-
+DEBUG_MCP=true DEBUG_LLM=true node dist/index.js
 ```
 
-這會顯示：
-- MCP 連接詳情
-- LLM 的 request/response
-- 詳細的錯誤堆疊
+**⚠️ 注意**：為了避免干擾 CLI 介面（UI），所有的 Debug 日誌現在都會**寫入檔案**，而不是顯示在螢幕上。
+
+請打開新的終端機視窗查看日誌：
+
+```bash
+# 查看應用程式 Debug 日誌 (MCP 連接、程式錯誤等)
+tail -f logs/app-debug.log
+
+# 查看 LLM 請求與回應詳情 (System Prompt, User Prompt, JSON Response)
+tail -f logs/llm-debug.log
+```
 
 #### Step 5: 檢查查詢內容
 
