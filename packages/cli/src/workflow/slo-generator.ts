@@ -1,4 +1,5 @@
 import { ChatOpenAI } from '@langchain/openai';
+import { llmLogger } from '../utils/llm-logger.js';
 import type { MCPClientManager } from '../mcp/manager.js';
 import { getConfig } from '../config.js';
 
@@ -237,8 +238,10 @@ ${currentSLOsJson}
 只輸出 JSON，不要其他說明。`;
 
         try {
+            llmLogger.log('plan', { prompt, metadata: { userFeedback: state.userFeedback } });
             const response = await this.llm.invoke(prompt);
             const content = response.content.toString();
+            llmLogger.log('plan', { response: content });
 
             // 解析 JSON
             let jsonStr = content;

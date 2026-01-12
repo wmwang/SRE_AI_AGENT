@@ -9,10 +9,17 @@ if [ -z "$OPENAI_API_KEY" ]; then
   exit 1
 fi
 
+# 如果沒有設定 Prometheus endpoint，自動啟用 Mock 模式
+if [ -z "$PROMETHEUS_ENDPOINT" ]; then
+  export MOCK_PROMETHEUS=true
+  echo "ℹ️  未偵測到 Prometheus，自動啟用 Mock 模式"
+fi
+
 echo "🚀 啟動 SRE AI Agent..."
 echo ""
 echo "環境設定:"
 echo "  OpenAI Model: ${OPENAI_MODEL:-gpt-4o-mini}"
+echo "  Prometheus: ${PROMETHEUS_ENDPOINT:-Mock Mode (模擬數據)}"
 echo "  Shared Memory: ${SHARED_MEMORY_PATH:-:memory:}"
 echo ""
 

@@ -44,6 +44,7 @@ export class SLOToolsHandler {
                 dependencies: [],
                 labels: { source: 'analyze_k8s_manifests' },
                 lastUpdated: now,
+                createdAt: now,
             });
         }
 
@@ -54,7 +55,7 @@ export class SLOToolsHandler {
                 serviceId,
                 name: slo.name,
                 description: slo.description,
-                description_zh: slo.description_zh,
+                descriptionZh: slo.description_zh,
                 target: slo.target,
                 threshold: slo.threshold,
                 window: slo.window,
@@ -130,7 +131,7 @@ export class SLOToolsHandler {
 
         // 錯誤預算計算（簡化版本，實際應該從 Prometheus 取得數據）
         const errorBudget = 100 - slo.target;
-        const remainingBudget = slo.errorBudget;
+        const remainingBudget = slo.errorBudget || errorBudget;
         const consumedBudget = errorBudget - remainingBudget;
         const consumedPercentage = (consumedBudget / errorBudget) * 100;
 
@@ -280,7 +281,7 @@ ${input.description ? `服務描述: ${input.description}` : ''}
             slos: slos.map(slo => ({
                 id: slo.id,
                 name: slo.name,
-                name_zh: slo.description_zh,
+                name_zh: slo.descriptionZh,
                 serviceId: slo.serviceId,
                 status: slo.status,
                 target: slo.target,

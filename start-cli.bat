@@ -10,6 +10,12 @@ if "%OPENAI_API_KEY%"=="" (
   exit /b 1
 )
 
+REM 如果沒有設定 Prometheus endpoint，自動啟用 Mock 模式
+if "%PROMETHEUS_ENDPOINT%"=="" (
+  set MOCK_PROMETHEUS=true
+  echo [INFO] No Prometheus detected, enabling Mock Mode
+)
+
 echo [INFO] Starting SRE AI Agent...
 echo.
 echo Environment Settings:
@@ -17,6 +23,11 @@ if "%OPENAI_MODEL%"=="" (
   echo   OpenAI Model: gpt-4o-mini (Default)
 ) else (
   echo   OpenAI Model: %OPENAI_MODEL%
+)
+if "%PROMETHEUS_ENDPOINT%"=="" (
+  echo   Prometheus: Mock Mode (Simulated Data)
+) else (
+  echo   Prometheus: %PROMETHEUS_ENDPOINT%
 )
 if "%SHARED_MEMORY_PATH%"=="" (
   echo   Shared Memory: :memory: (Default)

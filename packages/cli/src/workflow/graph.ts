@@ -1,4 +1,5 @@
 import { ChatOpenAI } from '@langchain/openai';
+import { llmLogger } from '../utils/llm-logger.js';
 import type { MCPClientManager, MCPToolInfo } from '../mcp/manager.js';
 import { getConfig } from '../config.js';
 
@@ -65,8 +66,10 @@ ${toolsDescription}
 
 請用一句話描述用戶的意圖（繁體中文）。`;
 
+        llmLogger.log('analyze', { prompt });
         const response = await this.llm.invoke(prompt);
         const intent = response.content.toString();
+        llmLogger.log('analyze', { response: intent });
 
         return { intent };
     }
@@ -106,8 +109,10 @@ ${toolsDescription}
 
 只返回 JSON，不要其他說明。`;
 
+        llmLogger.log('plan', { prompt });
         const response = await this.llm.invoke(prompt);
         const content = response.content.toString();
+        llmLogger.log('plan', { response: content });
 
         try {
             // 嘗試解析 JSON
@@ -184,8 +189,10 @@ ${resultsDescription}
 
 使用 markdown 格式讓輸出更易讀。`;
 
+        llmLogger.log('synthesize', { prompt, metadata: { intent: state.intent } });
         const response = await this.llm.invoke(prompt);
         const finalResponse = response.content.toString();
+        llmLogger.log('synthesize', { response: finalResponse });
 
         return { response: finalResponse };
     }

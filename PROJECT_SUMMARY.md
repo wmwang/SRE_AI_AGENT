@@ -13,7 +13,7 @@
 SRE AI Agent 系統
 ├── 基礎設施層
 │   ├── MCP Registry          - 服務發現
-│   └── Shared Memory         - 資料共享（SQLite）
+│   └── Shared Memory         - 資料共享（純 Map 記憶體）
 ├── MCP Servers 層
 │   ├── SLO Management        - 6 個 Tools
 │   └── Metrics Analysis      - 6 個 Tools
@@ -27,7 +27,7 @@ SRE AI Agent 系統
 
 ### 1. 基礎設施（2 個 packages）
 - **MCP Registry** - 完整的服務註冊與發現機制
-- **Shared Memory** - SQLite-based 統一資料層
+- **Shared Memory** - 純 JavaScript Map-based 統一資料層
 
 ### 2. MCP Servers（2 個 packages）
 - **SLO Management Server**
@@ -89,7 +89,7 @@ cd /Users/isosoman/Documents/SRE_AI_AGENT
 - @langchain/openai - LLM 整合
 
 **資料層：**
-- better-sqlite3 - 資料持久化
+- (已移除 better-sqlite3，改用純 Map 儲存，Windows 相容)
 - Zod - Schema 驗證
 
 **開發工具：**
@@ -172,7 +172,7 @@ SRE_AI_AGENT/
 ✅ 充分的文件
 
 ### 技術挑戰
-⚠️ Node.js 版本相容性（better-sqlite3）  
+✅ 跨平台相容（已移除 better-sqlite3，純 JavaScript）  
 ⚠️ LangGraph API 複雜度（改用簡化版本）  
 ⚠️ MCP Server 間的資料共享（透過 Shared Memory 解決）  
 

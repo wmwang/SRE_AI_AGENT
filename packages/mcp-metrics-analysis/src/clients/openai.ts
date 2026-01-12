@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { getConfig } from '../config.js';
+import { llmLogger } from '../utils/llm-logger.js';
 
 /**
  * OpenAI Client for Metrics Analysis
@@ -369,6 +370,12 @@ export class OpenAIClient {
 `;
 
         try {
+            // Log the complete prompt
+            llmLogger.log('metrics-health', {
+                prompt: `[System Prompt]\n${systemPrompt}\n\n[User Message]\n${userMessage}`,
+                metadata: { promql: input.promql, dataPointsCount: dataSummary.count }
+            });
+
             const response = await this.client.chat.completions.create({
                 model: this.model,
                 messages: [
@@ -383,6 +390,9 @@ export class OpenAIClient {
             if (!content) {
                 throw new Error('No response from OpenAI');
             }
+
+            // Log the response
+            llmLogger.log('metrics-health', { response: content });
 
             return JSON.parse(content);
         } catch (error) {
