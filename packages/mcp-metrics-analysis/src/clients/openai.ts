@@ -91,7 +91,9 @@ export class OpenAIClient {
             // Log the response
             llmLogger.log('nl-to-promql', { response: content });
 
-            const result = JSON.parse(content);
+            // 清理 Markdown 標記
+            const cleanContent = fullContent.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
+            const result = JSON.parse(cleanContent);
 
             // 如果有 user context，自動補充 labels
             if (input.userContext && result.promql) {
@@ -339,23 +341,35 @@ export class OpenAIClient {
     }> {
         const systemPrompt = `你是一個 SRE 專家，負責分析 Prometheus 指標健康度。
 
-## 分析維度
-1. **趨勢分析**：指標是上升、下降還是穩定
-2. **異常檢測**：是否有明顯的異常點或突變
-3. **健康評估**：healthy/warning/critical/unknown
-4. **改善建議**：基於 SRE 最佳實踐
+## 分析維度與規則（嚴格遵守）
+
+1. **趨勢分析**：
+   - 變化率絕對值 > 20% 必須標記為 "increasing" 或 "decreasing"
+   - 變化率絕對值 <= 20% 才可視為 "stable"
+   - **嚴格一致性**：如果 trend 是 increasing/decreasing，summary 絕對不能說「穩定」！必須說「有顯著上升/下降」。
+
+2. **健康評估**：
+   - **healthy**: 指標在預期範圍內
+   - **warning**: 變化率 > 50% 且無合理預期（如流量突增），或接近異常閾值
+   - **critical**: 服務不可用、錯誤率飆升或資源耗盡
+   - **unknown**: 數據不足
+
+3. **數值解讀**：
+   - 注意數值基數：從 1.0 變為 1.5 雖然是 +50%，但絕對值變化小。分析時應指出「雖然變化率高，但絕對數值仍在低位」。
+
+4. **改善建議**：提供具體的 Prometheus 監控建議或 K8s 資源調整建議。
 
 ## 輸出格式（JSON）
 {
   "health": "healthy" | "warning" | "critical" | "unknown",
   "analysis": {
-    "summary": "一句話總結（繁體中文）",
+    "summary": "一句話總結（繁體中文），必須與 trend 方向一致，若變化大請直接指出",
     "findings": [
       { "severity": "info|warning|critical", "message": "發現描述", "suggestion": "建議" }
     ],
     "trend": {
       "direction": "increasing" | "decreasing" | "stable",
-      "changeRate": "變化率，如 +15%"
+      "changeRate": "變化率，如 +50.0%"
     }
   },
   "recommendations": ["建議1", "建議2"]
@@ -420,7 +434,9 @@ export class OpenAIClient {
             // Log the response
             llmLogger.log('metrics-health', { response: content });
 
-            return JSON.parse(content);
+            // 清理 Markdown 標記
+            const cleanContent = content.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
+            return JSON.parse(cleanContent);
         } catch (error) {
             console.error('[OpenAI Client] Error in analyzeMetricsHealth:', error);
 
