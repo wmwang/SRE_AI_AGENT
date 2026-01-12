@@ -1,5 +1,4 @@
 @echo off
-setlocal EnableDelayedExpansion
 
 REM SRE AI Agent Windows Startup Script
 
@@ -84,4 +83,3 @@ echo.
 REM 4. 啟動 CLI
 call pnpm --filter @sre-agent/cli start
 
-endlocal

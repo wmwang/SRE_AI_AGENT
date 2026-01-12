@@ -96,10 +96,22 @@ chmod +x start-cli.sh
 ```
 
 **Windows:**
-```batch
-# 直接點擊 start-cli.bat 或在 CMD/PowerShell 執行：
-start-cli.bat
-```
+
+有兩種方式：
+
+1. **使用命令提示字元（CMD）- 推薦**
+   ```cmd
+   REM 直接執行 .bat 檔案
+   start-cli.bat
+   ```
+
+2. **使用 PowerShell**
+   ```powershell
+   # 呼叫 .bat 檔案（PowerShell 可以執行 .bat）
+   .\start-cli.bat
+   ```
+
+> 💡 **說明**：`.bat` 檔案是 CMD 的原生腳本格式，但 PowerShell 也能呼叫它。
 
 ---
 
@@ -130,23 +142,40 @@ export DEBUG=true
 ```
 
 **Windows:**
-```batch
+
+*使用 CMD：*
+```cmd
 set DEBUG=true
 start-cli.bat
+```
+
+*使用 PowerShell：*
+```powershell
+$env:DEBUG = "true"
+.\start-cli.bat
 ```
 
 #### 📝 LLM 通訊日誌 (推薦用於開發)
 記錄所有與 LLM 的對話內容，方便 debug AI 邏輯：
 
 **啟用方式：**
+
+*Mac/Linux:*
 ```bash
-# Mac/Linux
 export DEBUG_LLM=true
 ./start-cli.sh
+```
 
-# Windows
+*Windows CMD:*
+```cmd
 set DEBUG_LLM=true
 start-cli.bat
+```
+
+*Windows PowerShell:*
+```powershell
+$env:DEBUG_LLM = "true"
+.\start-cli.bat
 ```
 
 **查看日誌：**
@@ -166,10 +195,16 @@ export MOCK_PROMETHEUS=true
 ./start-cli.sh
 ```
 
-**Windows:**
-```batch
+**Windows CMD:**
+```cmd
 set MOCK_PROMETHEUS=true
 start-cli.bat
+```
+
+**Windows PowerShell:**
+```powershell
+$env:MOCK_PROMETHEUS = "true"
+.\start-cli.bat
 ```
 
 ---
