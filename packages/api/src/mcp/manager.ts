@@ -61,12 +61,23 @@ export class MCPClientManager {
                 }
             );
 
-            // 建立環境變數映射
+            // 建立環境變數映射，確保 LLM Logger 環境變數傳遞
             const envVars: Record<string, string> = {};
             for (const [key, value] of Object.entries(process.env)) {
                 if (value !== undefined) {
                     envVars[key] = value;
                 }
+            }
+
+            // 確保 DEBUG_LLM 和 PROJECT_ROOT 設定正確
+            envVars['DEBUG_LLM'] = 'true';
+            if (!envVars['PROJECT_ROOT']) {
+                // API Gateway 路徑: packages/api/src/mcp/manager.ts -> 往上 4 層到專案根目錄
+                const { dirname, resolve } = await import('path');
+                const { fileURLToPath } = await import('url');
+                const __filename = fileURLToPath(import.meta.url);
+                const __dirname = dirname(__filename);
+                envVars['PROJECT_ROOT'] = resolve(__dirname, '..', '..', '..', '..');
             }
 
             const transport = new StdioClientTransport({
