@@ -1,0 +1,47 @@
+[
+  {
+    "id": "slo-1",
+    "name": "API Availability",
+    "description": "在定義的時間窗口內，成功的 API 請求百分比。",
+    "target": 99.9,
+    "threshold": 99,
+    "window": "1 hour",
+    "golden_signal": "Availability"
+  },
+  {
+    "id": "slo-2",
+    "name": "Response Time",
+    "description": "在指定的時間閾值內回應的 API 請求百分比。",
+    "target": 95,
+    "threshold": 200,
+    "window": "1 hour",
+    "golden_signal": "Latency"
+  },
+  {
+    "id": "slo-3",
+    "name": "Error Rate",
+    "description": "導致錯誤回應的 API 請求百分比。",
+    "target": 1,
+    "threshold": 5,
+    "window": "1 hour",
+    "golden_signal": "Errors"
+  },
+  {
+    "id": "slo-4",
+    "name": "User Interaction Success Rate",
+    "description": "使用者與留言簿 API 互動成功的百分比。",
+    "target": 98,
+    "threshold": 95,
+    "window": "1 hour",
+    "golden_signal": "User Satisfaction"
+  },
+  {
+    "id": "slo-5",
+    "name": "Throughput",
+    "description": "每分鐘成功的 API 請求數量。",
+    "target": 1000,
+    "threshold": 500,
+    "window": "1 hour",
+    "golden_signal": "Throughput"
+  }
+]

@@ -65,6 +65,8 @@ export class MCPClientManager {
             }
 
             debugLog(`[MCP]   OPENAI_API_KEY: ${envVars['OPENAI_API_KEY'] ? '已設定' : '未設定'}`);
+            debugLog(`[MCP]   DEBUG_LLM: ${envVars['DEBUG_LLM'] || 'undefined'}`);
+            debugLog(`[MCP]   PROJECT_ROOT: ${envVars['PROJECT_ROOT'] || 'undefined'}`);
 
             // 建立 transport (傳遞環境變數)
             const transport = new StdioClientTransport({

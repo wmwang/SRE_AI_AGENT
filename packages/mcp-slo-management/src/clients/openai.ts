@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { getConfig } from '../config.js';
+import { llmLogger } from '../utils/llm-logger.js';
 
 /**
  * OpenAI Client Wrapper
@@ -19,28 +20,52 @@ export class OpenAIClient {
         });
 
         this.model = config.openai.model || 'gpt-4o-mini';
+
+        // 強制初始化 logger 以確保它捕捉到環境變數設定
+        llmLogger;
     }
 
     /**
      * 呼叫 OpenAI API（非 streaming）
      */
     async complete(systemPrompt: string, userPrompt: string): Promise<string> {
-        const response = await this.client.chat.completions.create({
-            model: this.model,
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt },
-            ],
-            temperature: 0,
+        llmLogger.log('slo-analysis', {
+            prompt: `[System Prompt]\n${systemPrompt}\n\n[User Prompt]\n${userPrompt}`,
         });
 
-        return response.choices[0]?.message?.content || '';
+        // Use stream() internally to enforce SSE protocol
+        let fullResponse = '';
+        const streamGenerator = this.stream(systemPrompt, userPrompt);
+
+        for await (const chunk of streamGenerator) {
+            fullResponse += chunk;
+        }
+
+        // Logging is primarily handled inside stream(), but we can do a final verify or just rely on stream's log.
+        // The stream method logs the prompt (with "(Stream)") and the full response.
+        // However, since we are wrapping it, we might want to avoid double logging the prompt if possible,
+        // OR we just accept it. The 'stream' method logs as 'slo-analysis'.
+
+        // Actually, let's keep it simple: COMPLETE calls STREAM.
+        // But wait, my previous edit added logging to complete() AND stream().
+        // If I make complete() call stream(), stream() will log the prompt again.
+        // To avoid duplicate logs, I should probably modify stream() to accept an option to silence log?
+        // OR just let it log. It's fine.
+
+        // Wait, stream() ALREADY logs the full response at the end.
+        // So I don't need to log response here in complete() if I use stream().
+
+        return fullResponse;
     }
 
     /**
      * 呼叫 OpenAI API（streaming）
      */
     async *stream(systemPrompt: string, userPrompt: string): AsyncGenerator<string> {
+        llmLogger.log('slo-analysis', {
+            prompt: `[System Prompt] (Stream)\n${systemPrompt}\n\n[User Prompt]\n${userPrompt}`,
+        });
+
         const stream = await this.client.chat.completions.create({
             model: this.model,
             messages: [
@@ -51,12 +76,19 @@ export class OpenAIClient {
             stream: true,
         });
 
+        let fullResponse = '';
+
         for await (const chunk of stream) {
             const content = chunk.choices[0]?.delta?.content;
             if (content) {
+                fullResponse += content;
                 yield content;
             }
         }
+
+        llmLogger.log('slo-analysis', {
+            response: fullResponse,
+        });
     }
 
     /**
@@ -120,25 +152,23 @@ K8s Manifests:
 ${manifests}
         </task>`;
 
-        // DEBUG: 輸出送給 LLM 的資料
+
+        // Log request via LLMLogger
+        llmLogger.log('slo-analysis', {
+            prompt: `[System Prompt]\n${systemPrompt}\n\n[User Prompt]\n${userPrompt}`,
+        });
+
+        // Debug output to stderr (optional, keep short if needed, or rely purely on file log)
         if (process.env.DEBUG_LLM === 'true') {
-            console.error('\n========== LLM REQUEST DEBUG ==========');
-            console.error('System Prompt:');
-            console.error(systemPrompt);
-            console.error('\n---\nUser Prompt:');
-            console.error(userPrompt);
-            console.error('========== END REQUEST DEBUG ==========\n');
+            console.error('[MCP SLO] LLM Request sent, check logs/llm-debug.log');
         }
 
         const response = await this.complete(systemPrompt, userPrompt);
 
-        // DEBUG: 輸出 LLM 的原始回應
-        if (process.env.DEBUG_LLM === 'true') {
-            console.error('\n========== LLM RESPONSE DEBUG ==========');
-            console.error('Raw Response:');
-            console.error(response);
-            console.error('========== END RESPONSE DEBUG ==========\n');
-        }
+        // Log response via LLMLogger
+        llmLogger.log('slo-analysis', {
+            response: response,
+        });
 
         try {
             // 嘗試解析 JSON

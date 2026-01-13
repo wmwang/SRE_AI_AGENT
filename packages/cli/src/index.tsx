@@ -2,7 +2,7 @@
 
 import { render } from 'ink';
 import { createMCPManager } from './mcp/index.js';
-import { SREAgentWorkflow } from './workflow/graph.js';
+import { SREAgentWorkflow } from './workflows/ai-query/index.js';
 import { App } from './ui/App.js';
 import { debugLog } from './utils/debug.js';
 

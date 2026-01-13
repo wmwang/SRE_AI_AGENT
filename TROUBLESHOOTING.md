@@ -81,6 +81,21 @@ tail -f logs/app-debug.log
 tail -f logs/llm-debug.log
 ```
 
+#### Step 4.1: 找不到 Log 檔案？(Windows / IDE 使用者必讀)
+
+如果您是在 Windows 上，或是透過 VS Code / Windsurf / Cursor 等 IDE 啟動 MCP Server，您可能會找不到 Log 放在哪裡。
+
+日誌系統會按照以下順序決定存放位置：
+1. **專案目錄下的 `logs/`**：這是最優先的位置。系統會根據**程式碼檔案所在的實際路徑**去推算專案根目錄，所以無論您的 IDE 從哪裡啟動執行檔，日誌都應該出現在您下載的這個專案資料夾裡的 `logs` 目錄中。
+2. **使用者家目錄的 Fallback**：如果上述嘗試失敗（例如權限不足），日誌會被寫入到 `~/.sre-agent/logs/`。
+   - Windows: `C:\Users\<您的使用者名稱>\.sre-agent\logs\`
+   - macOS/Linux: `/Users/<您的使用者名稱>/.sre-agent/logs/`
+
+**強制指定路徑：**
+您也可以透過環境變數強制指定絕對路徑：
+- `MCP_LOG_PATH`: 指定 `mcp-metrics.log` 的完整路徑 (e.g. `C:\logs\mcp.log`)
+- `LLM_LOG_PATH`: 指定 `llm-debug.log` 的完整路徑 (e.g. `C:\logs\llm.log`)
+
 #### Step 5: 檢查查詢內容
 
 某些查詢可能需要特定的參數。試試最簡單的查詢：

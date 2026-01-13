@@ -1,7 +1,7 @@
 import { Box, Text, useInput } from 'ink';
 import { useState, useCallback } from 'react';
 import TextInput from 'ink-text-input';
-import { SLOGeneratorWorkflow, SLOWorkflowState, SLODefinition } from '../workflow/slo-generator.js';
+import { SLOGeneratorWorkflow, SLOWorkflowState, SLODefinition } from '../workflows/slo-generator/index.js';
 import type { MCPClientManager } from '../mcp/manager.js';
 
 interface SLOWorkflowViewProps {

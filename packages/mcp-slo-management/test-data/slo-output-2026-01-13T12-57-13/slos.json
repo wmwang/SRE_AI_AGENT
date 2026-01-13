@@ -1,0 +1,47 @@
+[
+  {
+    "id": "slo-1",
+    "name": "API Availability",
+    "description": "在定義的時間窗口內，成功的 API 請求百分比。",
+    "target": 99.95,
+    "threshold": 99,
+    "window": "1 hour",
+    "golden_signal": "Availability"
+  },
+  {
+    "id": "slo-2",
+    "name": "API Latency",
+    "description": "在指定的響應時間內完成的 API 請求百分比。",
+    "target": 97,
+    "threshold": 90,
+    "window": "1 hour",
+    "golden_signal": "Latency"
+  },
+  {
+    "id": "slo-3",
+    "name": "Error Rate",
+    "description": "返回錯誤響應的 API 請求百分比。",
+    "target": 0.5,
+    "threshold": 1,
+    "window": "1 hour",
+    "golden_signal": "Errors"
+  },
+  {
+    "id": "slo-4",
+    "name": "User Interaction Success Rate",
+    "description": "用戶與客戶介面的成功互動百分比。",
+    "target": 99,
+    "threshold": 95,
+    "window": "1 hour",
+    "golden_signal": "User Satisfaction"
+  },
+  {
+    "id": "slo-5",
+    "name": "System Resource Utilization",
+    "description": "在高峰時段，API 服務的平均 CPU 和記憶體使用率。",
+    "target": 70,
+    "threshold": 85,
+    "window": "1 hour",
+    "golden_signal": "Saturation"
+  }
+]
