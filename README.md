@@ -13,15 +13,15 @@
 
 採用模組化 MCP (Model Context Protocol) 架構：
 
-- **MCP Registry**：服務發現與註冊中心
 - **MCP Servers**：
   - SLO Management Server
   - Log Analysis Server
   - Metrics Analysis Server
-  - K8s/CI-CD Server
-- **Shared Memory**：統一的上下文管理（SQLite/Redis）
+  - K8s Integration Server
+- **Shared Memory**：統一的上下文管理
 - **CLI Agent**：基於 LangGraph + Ink 的終端介面
-- **Web Interface**：Web 管理介面
+- **Web Interface**：Vite + React + Tailwind 的現代化 Web UI
+- **API Gateway**：Hono HTTP API 閘道
 
 ## 🚀 快速開始 (Quick Start)
 
@@ -29,23 +29,13 @@
 
 本系統需要 **Node.js** (v18+) 環境。
 
-#### 步驟 1：安裝 Node.js
-請確認你的電腦已安裝 Node.js (建議 v18 或 v20 LTS 版本)。
-> 檢查方式：打開終端機 (Terminal) 輸入 `node -v`
-
-#### 步驟 2：安裝 pnpm (必要)
-本專案使用 `pnpm` 進行套件管理 (因為是 Monorepo 架構，能大幅節省硬碟空間)。
-如果你的電腦還沒安裝 pnpm，請執行以下指令安裝：
-
 ```bash
-# 使用 npm 安裝 pnpm
+# 檢查 Node.js 版本
+node -v
+
+# 安裝 pnpm (必要)
 npm install -g pnpm
-
-# 驗證安裝
-pnpm -v
 ```
-
----
 
 ### 2. 安裝與建置 (Installation)
 
@@ -54,197 +44,119 @@ pnpm -v
 git clone <repository_url>
 cd SRE_AI_AGENT
 
-# 2. 安裝所有依賴 (會自動處理所有 packages)
+# 2. 安裝所有依賴
 pnpm install
 
 # 3. 建置專案
 pnpm build
 ```
 
----
-
 ### 3. 設定環境變數 (Configuration)
 
-你需要設定以下變數才能讓 Agent 正常運作。可以直接在終端機執行，或寫入 `~/.zshrc` / `.env` 檔案。
+在專案根目錄建立 `.env` 檔案（或直接設定環境變數）：
 
 ```bash
-# [必要] OpenAI API Key (用於 AI 分析與生成)
-export OPENAI_API_KEY="sk-..."
+# [必要] OpenAI API Key
+OPENAI_API_KEY="sk-..."
 
-# [選填] Prometheus 端點 (Metrics Explorer 需要)
-# 若無真實 Prometheus，可略過此行，系統預設會使用 Mock 模式
-export PROMETHEUS_ENDPOINT="http://localhost:9090"
-
-# [選填] K8s 設定 (SLO Workflow 需要)
-# 通常系統會自動讀取 ~/.kube/config，若位置不同請設定：
-export KUBECONFIG="~/.kube/config"
+# [選填] Prometheus 端點
+PROMETHEUS_ENDPOINT="http://localhost:9090"
 ```
-
----
 
 ### 4. 啟動系統 (Running)
 
-我們提供了啟動腳本，直接執行即可進入 CLI 介面：
+#### 方式 A：CLI 介面
 
-**Mac/Linux:**
 ```bash
-# 賦予執行權限 (初次執行需要)
-chmod +x start-cli.sh
-
-# 啟動 Agent
+# Mac/Linux
 ./start-cli.sh
+
+# Windows
+start-cli.bat
 ```
 
-**Windows:**
+#### 方式 B：Web 介面 ✨ NEW
 
-有兩種方式：
+```bash
+# 終端機 1：啟動 API Gateway
+cd packages/api && pnpm dev
 
-1. **使用命令提示字元（CMD）- 推薦**
-   ```cmd
-   REM 直接執行 .bat 檔案
-   start-cli.bat
-   ```
+# 終端機 2：啟動 Web Frontend
+cd packages/web && pnpm dev
 
-2. **使用 PowerShell**
-   ```powershell
-   # 呼叫 .bat 檔案（PowerShell 可以執行 .bat）
-   .\start-cli.bat
-   ```
-
-> 💡 **說明**：`.bat` 檔案是 CMD 的原生腳本格式，但 PowerShell 也能呼叫它。
+# 開啟瀏覽器：http://localhost:5173
+```
 
 ---
 
-### 5. 開發指令 (Development)
+## 🌐 Web 介面
 
-如果你是開發者，可以使用以下指令：
+全新的 Web UI 提供更直覺的操作體驗：
 
-```bash
-# 開發模式 (Watch Mode)
-pnpm dev
-
-# 執行測試
-pnpm test
-
-# 類型檢查
-pnpm typecheck
-```
-
-### 6. 進階模式 (Advanced Modes)
-
-#### 🐛 Debug 模式
-如果你遇到問題，可以開啟 Debug 模式查看詳細日誌：
-
-**Mac/Linux:**
-```bash
-export DEBUG=true
-./start-cli.sh
-```
-
-**Windows:**
-
-*使用 CMD：*
-```cmd
-set DEBUG=true
-start-cli.bat
-```
-
-*使用 PowerShell：*
-```powershell
-$env:DEBUG = "true"
-.\start-cli.bat
-```
-
-#### 📝 LLM 通訊日誌 (推薦用於開發)
-記錄所有與 LLM 的對話內容，方便 debug AI 邏輯：
-
-**啟用方式：**
-
-*Mac/Linux:*
-```bash
-export DEBUG_LLM=true
-./start-cli.sh
-```
-
-*Windows CMD:*
-```cmd
-set DEBUG_LLM=true
-start-cli.bat
-```
-
-*Windows PowerShell:*
-```powershell
-$env:DEBUG_LLM = "true"
-.\start-cli.bat
-```
-
-**查看日誌：**
-日誌會自動寫入專案目錄下的 `logs/llm-debug.log`，直接用 VS Code 或任何文字編輯器開啟即可。
-
-日誌內容包含：
-- 📝 **Prompt**：發送給 LLM 的完整提示詞
-- ✅ **Response**：LLM 的回應內容
-- ℹ️ **Metadata**：額外的上下文資訊
-
-#### 🧪 Mock 模式 (模擬 Prometheus)
-如果你**沒有**真實的 Prometheus 環境，可以開啟 Mock 模式，系統會使用模擬數據讓你體驗功能：
-
-**Mac/Linux:**
-```bash
-export MOCK_PROMETHEUS=true
-./start-cli.sh
-```
-
-**Windows CMD:**
-```cmd
-set MOCK_PROMETHEUS=true
-start-cli.bat
-```
-
-**Windows PowerShell:**
-```powershell
-$env:MOCK_PROMETHEUS = "true"
-.\start-cli.bat
-```
+| 頁面 | 功能 |
+|------|------|
+| **Dashboard** | 總覽頁面，快速進入各功能 |
+| **SLO Workflow** | K8s YAML → SLO → Prometheus Rules |
+| **Metrics Explorer** | 自然語言查詢 + 圖表 + AI 診斷 |
+| **Tool Browser** | 瀏覽和測試所有 MCP 工具 |
 
 ---
 
 ## 📦 Monorepo 結構
 
 ```
-sre-ops-ai-agent/
+SRE_AI_AGENT/
 ├── packages/
-│   ├── mcp-registry/          # MCP 服務註冊中心
-│   ├── mcp-orchestrator/      # MCP 協調器
-│   ├── mcp-slo-management/    # SLO 管理 MCP Server
-│   ├── mcp-log-analysis/      # 日誌分析 MCP Server
-│   ├── mcp-metrics-analysis/  # 指標分析 MCP Server
-│   ├── mcp-k8s-cicd/         # K8s/CI-CD MCP Server
-│   ├── shared-memory/         # Shared Memory Service
-│   ├── cli-agent/            # CLI Agent
-│   └── web-interface/        # Web Interface
-└── docs/                     # 文件
+│   ├── cli/                    # CLI Agent (Ink TUI)
+│   ├── api/                    # API Gateway (Hono)
+│   ├── web/                    # Web Frontend (Vite + React)
+│   ├── mcp-slo-management/     # SLO 管理 MCP Server
+│   ├── mcp-metrics-analysis/   # 指標分析 MCP Server
+│   ├── mcp-k8s-integration/    # K8s 整合 MCP Server
+│   └── shared-memory/          # Shared Memory Service
+├── logs/                       # 日誌目錄
+├── start-cli.sh               # Mac/Linux 啟動腳本
+└── start-cli.bat              # Windows 啟動腳本
 ```
 
-## 📚 文件
+---
 
-詳細文件請參考 [docs/](./docs/) 目錄：
+## 🐛 Debug 模式
 
-- [架構設計](./docs/architecture.md)
-- [使用者手冊](./docs/user-manual.md)
-- [開發者指南](./docs/developer-guide.md)
+```bash
+# 開啟所有 Debug 日誌
+export DEBUG=true DEBUG_LLM=true
+./start-cli.sh
+
+# 查看日誌
+tail -f logs/app-debug.log
+tail -f logs/llm-debug.log
+```
+
+詳細除錯說明請參考 [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
+
+---
 
 ## 🛠️ 技術棧
 
-- **語言**：TypeScript
-- **AI/LLM**：OpenAI SDK (相容 OpenAI API 協定)
-- **MCP**：Model Context Protocol SDK
-- **CLI UI**：Ink (React for CLI)
-- **Workflow**：LangGraph
-- **儲存**：純 JavaScript Map (記憶體模式，無需 SQLite/Redis)
-- **Web**：Next.js
+| 類別 | 技術 |
+|------|------|
+| **語言** | TypeScript |
+| **AI/LLM** | OpenAI SDK (相容 OpenAI API 協定) |
+| **MCP** | Model Context Protocol SDK |
+| **CLI** | Ink (React for CLI) |
+| **Web** | Vite + React 19 + Tailwind CSS v4 |
+| **API** | Hono |
+| **Workflow** | LangGraph-style State Machine |
+| **圖表** | Recharts |
+
+---
+
+## 📚 文件
+
+- [系統設計](./SYSTEM_DESIGN.md)
+- [疑難排解](./TROUBLESHOOTING.md)
 
 ## 📄 授權
 
 MIT License
-

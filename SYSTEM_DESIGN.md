@@ -1,7 +1,7 @@
 # SRE AI Agent 系統設計全覽
 
-> Version: 2.0.0
-> Last Updated: 2026-01-13
+> Version: 2.1.0
+> Last Updated: 2026-01-14
 
 ## 📖 概述
 
@@ -23,6 +23,10 @@
 ```mermaid
 graph TD
     User([SRE Engineer]) <--> CLI[CLI Agent<br/>(Ink + LangGraph)]
+    User <--> Browser([Web Browser])
+    
+    Browser <--> WebUI[Web Frontend<br/>(Vite + React)]
+    WebUI <--> API[API Gateway<br/>(Hono)]
 
     subgraph "Infrastructure Layer"
         Registry[MCP Registry<br/>(Service Discovery)]
@@ -44,14 +48,20 @@ graph TD
         OpenAI[OpenAI API]
     end
 
-    %% Connections
+    %% CLI Connections
     CLI <--> Registry
     CLI <--> SharedMem
-    
     CLI <--> SLO
     CLI <--> Metrics
     CLI <--> K8s
     CLI <--> Logs
+
+    %% API Gateway Connections
+    API <--> SLO
+    API <--> Metrics
+    API <--> K8s
+    API <--> Logs
+    API <--> SharedMem
 
     SLO <--> OpenAI
     SLO <--> SharedMem
@@ -69,26 +79,58 @@ graph TD
     classDef infra fill:#e1f5fe,stroke:#01579b
     classDef mcp fill:#fff3e0,stroke:#e65100
     classDef cli fill:#e8f5e9,stroke:#1b5e20
+    classDef web fill:#fce4ec,stroke:#880e4f
     
     class Registry,SharedMem infra
     class SLO,Metrics,K8s,Logs mcp
     class CLI cli
+    class WebUI,API,Browser web
 ```
 
 ---
 
 ## 🧩 組件詳解
 
-### 1. 應用層：CLI Agent
+### 1. 應用層
 
-> **角色**：中央大腦與互動介面
+#### A. CLI Agent `packages/cli`
+
+> **角色**：終端機互動介面（適合開發者與自動化腳本）
 
 -   **核心技術**：TypeScript, React Ink, LangGraph, LLM
 -   **功能模組**：
     -   **MCP Client Manager**: 自動發現並連接所有註冊的 MCP Servers。
-    -   **Context Manager**: 管理使用者 Session（如當前 Namespace, Time Range），存儲於 Shared Memory。
+    -   **Context Manager**: 管理使用者 Session（如當前 Namespace, Time Range）。
     -   **Smart Router**: 解析自然語言，決定調用哪個 Tool 或啟動哪個 Workflow。
     -   **UI Engine**: 基於 Ink 渲染動態、互動式的 Terminal UI。
+
+#### B. Web Frontend `packages/web` ✨ NEW
+
+> **角色**：現代化 Web 介面（適合 Demo 和非技術使用者）
+
+-   **核心技術**：Vite, React 19, TypeScript, Tailwind CSS v4
+-   **功能頁面**：
+    -   **Dashboard**: 總覽頁面，快速進入各功能模組。
+    -   **SLO Workflow**: K8s YAML → AI 分析 → SLO 審核調整 → Prometheus Rules 生成。
+    -   **Metrics Explorer**: 自然語言查詢指標、圖表視覺化、AI 診斷。
+    -   **Tool Browser**: 瀏覽所有 MCP 工具並測試呼叫。
+
+#### C. API Gateway `packages/api` ✨ NEW
+
+> **角色**：HTTP REST API 閘道，將 Web 請求轉換為 MCP 呼叫
+
+-   **核心技術**：Hono, Node.js, MCP SDK
+-   **API 端點**：
+    -   `POST /api/slo/analyze` - 分析 K8s YAML
+    -   `POST /api/slo/refine` - AI 協助調整 SLO
+    -   `POST /api/slo/generate` - 生成 Prometheus/Grafana 配置
+    -   `POST /api/metrics/query` - 自然語言轉 PromQL
+    -   `POST /api/metrics/diagnose` - AI 診斷分析
+    -   `GET /api/tools` - 列出所有可用工具
+-   **特色**：
+    -   CORS 支援（允許 localhost:5173 跨域）
+    -   SSE 串流支援（用於 AI 回應串流）
+    -   自動連接多個 MCP Servers
 
 ### 2. 基礎設施層
 
@@ -326,6 +368,8 @@ User Interface 旨在解決 "資訊過載" 與 "上下文丟失" 的問題。
 ### Phase 1: 整合與強化 (Current)
 - [x] 基礎三大 MCP Servers。
 - [x] CLI 基礎互動。
+- [x] Web Frontend (Vite + React)。
+- [x] API Gateway (Hono)。
 - [ ] 整合 Log Analysis Server。
 - [ ] 完善 Multi-Agent 協作邏輯。
 
