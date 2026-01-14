@@ -63,14 +63,30 @@ export async function planNode(
 可用工具：
 ${toolsDescription}
 
-請以 JSON 格式回應，包含要執行的工具列表：
+**重要指導原則**：
+1. **參數提取範例**：
+   - 如果用戶說「Web 應用程式」或「幫我生成 API 服務的 SLO」，提取 serviceType 為 "web" 或 "api"
+   - 如果用戶說「一個處理支付的 API」，提取 serviceType="api", description="處理支付的 API"
+   - 服務類型常見值：web, api, database, cache, queue
+
+2. **嚴格的參數驗證**：
+   - 對於 recommend_slos 工具，serviceType 是**必須參數**
+   - 如果用戶只說「我想要 SLO 建議」而沒有提及任何服務類型（web、api、database 等），**必須**返回 needsMoreInfo=true
+   - **禁止猜測或虛構服務類型**，即使是常見的類型（如 payment, user, order 等）
+
+3. 不要使用 undefined/null 作為參數值
+4. 在 missingInfo 中，提供具體的範例查詢
+
+請以 JSON 格式回應：
 {
+  "needsMoreInfo": false,
+  "missingInfo": "",
   "tools": [
     {
       "serverId": "slo",
-      "toolName": "track_slo_status",
-      "args": {},
-      "reasoning": "查詢 SLO 狀態"
+      "toolName": "recommend_slos",
+      "args": { "serviceType": "api", "description": "處理支付" },
+      "reasoning": "用戶要求生成 API 服務的 SLO"
     }
   ]
 }
@@ -91,6 +107,16 @@ ${toolsDescription}
         }
 
         const parsed = JSON.parse(jsonStr);
+
+        // 檢查是否需要更多資訊
+        if (parsed.needsMoreInfo) {
+            return {
+                selectedTools: [],
+                needsMoreInfo: true,
+                missingInfo: parsed.missingInfo || '需要更多資訊才能執行此操作',
+            };
+        }
+
         return { selectedTools: parsed.tools || [] };
     } catch (error) {
         console.error('[Workflow] Failed to parse plan:', error);
@@ -144,6 +170,13 @@ export async function synthesizeNode(
     state: WorkflowState,
     llm: ChatOpenAI
 ): Promise<Partial<WorkflowState>> {
+    // 如果需要更多資訊，直接返回引導性回應
+    if (state.needsMoreInfo) {
+        return {
+            response: `### ℹ️ 需要更多資訊\n\n${state.missingInfo}\n\n💡 **提示**：按 ESC 返回主選單，然後選擇「AI Query」重新輸入查詢。`
+        };
+    }
+
     const resultsDescription = state.results
         .map(r => `工具: ${r.tool}\n結果: ${JSON.stringify(r.data, null, 2)}`)
         .join('\n\n');

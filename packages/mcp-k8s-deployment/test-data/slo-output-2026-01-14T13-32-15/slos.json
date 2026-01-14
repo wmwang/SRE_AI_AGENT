@@ -1,0 +1,37 @@
+[
+  {
+    "id": "slo-1",
+    "name": "Availability",
+    "description": "在定義的時間內，Web 應用程式成功請求的百分比。",
+    "target": 99.95,
+    "threshold": 99,
+    "window": "1 month",
+    "golden_signal": "Availability"
+  },
+  {
+    "id": "slo-2",
+    "name": "Latency",
+    "description": "在指定的響應時間閾值內服務的請求百分比。",
+    "target": 98,
+    "threshold": 200,
+    "window": "1 month",
+    "golden_signal": "Latency"
+  },
+  {
+    "id": "slo-3",
+    "name": "Error Rate",
+    "description": "所有請求中導致錯誤響應的百分比。",
+    "target": 0.5,
+    "threshold": 1,
+    "window": "1 month",
+    "golden_signal": "Errors"
+  },
+  {
+    "id": "slo-4",
+    "name": "Throughput",
+    "description": "Web 應用程式每秒處理的成功請求數量。",
+    "target": 1200,
+    "window": "1 month",
+    "golden_signal": "Throughput"
+  }
+]

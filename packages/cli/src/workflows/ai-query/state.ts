@@ -23,6 +23,8 @@ export interface WorkflowState {
     }>;
     response: string;
     error?: string;
+    needsMoreInfo?: boolean;
+    missingInfo?: string;
 }
 
 /**

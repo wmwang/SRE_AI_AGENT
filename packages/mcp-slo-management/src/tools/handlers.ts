@@ -164,6 +164,15 @@ export class SLOToolsHandler {
         const systemPrompt = `你是一位資深的 SRE 專家。
 根據給定的服務類型和描述，推薦 3-5 個合適的 SLOs。
 
+請嚴格遵守 Google SRE 的「4 大黃金指標」(Four Golden Signals) 原則，所有推薦的 SLO 必須屬於以下四類之一：
+1. Latency (延遲)：服務處理請求所需的時間
+2. Traffic (流量)：系統負載量（如 QPS）
+3. Errors (錯誤)：請求失敗的比率（如 5xx 錯誤率）
+4. Saturation (飽和度)：系統資源使用狀況（如 CPU/Memory 使用率）
+
+不要使用 "User Satisfaction", "Availability" (除非歸類為 Errors 或其他), "Uptime" 等非標準分類。
+如果是 Availability 相關（如成功率），請歸類為 "Errors"（因為錯誤率 = 1 - 可用性）或 "Traffic"（成功請求數）。
+
 對於每個 SLO，提供：
 - id: 唯一識別碼
 - name: SLO 名稱
@@ -171,8 +180,8 @@ export class SLOToolsHandler {
 - description_zh: 繁體中文描述
 - target: 目標百分比 (0-100)
 - threshold: 閾值（可選）
-- window: 時間窗口
-- golden_signal: Golden Signal 分類
+- window: 時間窗口 (通常為 "1 month")
+- golden_signal: 必須是 "Latency", "Traffic", "Errors", "Saturation" 其中之一
 
 以 JSON 格式輸出：
 {

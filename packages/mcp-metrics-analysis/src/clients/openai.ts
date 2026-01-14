@@ -291,16 +291,23 @@ ${(input.availableMetrics || []).slice(0, 50).join('\n')}
                 metadata: { context: input.userContext }
             });
 
-            const completion = await this.client.chat.completions.create({
+            const stream = await this.client.chat.completions.create({
                 model: this.model,
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userMessage }
                 ],
-                temperature: 0.2, // 稍微有點創意但保持穩定
+                temperature: 0.2,
+                stream: true,
             });
 
-            const content = completion.choices[0]?.message?.content || '';
+            let fullContent = '';
+            for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta?.content;
+                if (delta) fullContent += delta;
+            }
+
+            const content = fullContent;
             llmLogger.log('suggest-hints', { response: content });
 
             const cleanContent = content.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
@@ -376,16 +383,23 @@ ${JSON.stringify(input.sampledValues)}
                 metadata: { promql: input.promql }
             });
 
-            const completion = await this.client.chat.completions.create({
+            const stream = await this.client.chat.completions.create({
                 model: this.model,
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userMessage }
                 ],
                 temperature: 0.1,
+                stream: true,
             });
 
-            const content = completion.choices[0]?.message?.content || '';
+            let fullContent = '';
+            for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta?.content;
+                if (delta) fullContent += delta;
+            }
+
+            const content = fullContent;
             llmLogger.log('analyze-trend', { response: content });
 
             const cleanContent = content.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
@@ -454,16 +468,23 @@ ${JSON.stringify(input.statisticalAnomalies)}
                 metadata: { candidateCount: input.statisticalAnomalies.length }
             });
 
-            const completion = await this.client.chat.completions.create({
+            const stream = await this.client.chat.completions.create({
                 model: this.model,
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userMessage }
                 ],
                 temperature: 0.1,
+                stream: true,
             });
 
-            const content = completion.choices[0]?.message?.content || '';
+            let fullContent = '';
+            for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta?.content;
+                if (delta) fullContent += delta;
+            }
+
+            const content = fullContent;
             llmLogger.log('detect-anomalies', { response: content });
 
             const cleanContent = content.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();

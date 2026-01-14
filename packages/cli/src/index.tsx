@@ -24,6 +24,9 @@ async function main() {
     let currentStep = '';
     let response = '';
     let error = '';
+    let needsMoreInfo = false;
+    let missingInfo = '';
+    let originalQuery = ''; // 記住原始查詢
 
     // 查詢處理函數
     const handleQuery = async (query: string) => {
@@ -33,16 +36,36 @@ async function main() {
         error = '';
 
         try {
+            // 如果之前需要更多資訊且有原始查詢，將補充資訊追加到原始查詢
+            let fullQuery = query;
+            if (needsMoreInfo && originalQuery) {
+                fullQuery = `${originalQuery}。補充資訊：${query}`;
+                needsMoreInfo = false; // 重置標記
+            } else {
+                // 這是新查詢，記住它
+                originalQuery = query;
+            }
+
             // 執行 workflow
             currentStep = '執行中...';
-            const result = await workflow.run(query);
+            const result = await workflow.run(fullQuery);
 
             // 更新回應
             response = result.response;
+            needsMoreInfo = result.needsMoreInfo || false;
+            missingInfo = result.missingInfo || '';
+
+            // 如果不再需要更多資訊，清除原始查詢
+            if (!needsMoreInfo) {
+                originalQuery = '';
+            }
+
             currentStep = '';
         } catch (err) {
             error = err instanceof Error ? err.message : String(err);
             currentStep = '';
+            originalQuery = ''; // 錯誤時清除原始查詢
+            needsMoreInfo = false;
         } finally {
             isProcessing = false;
         }
@@ -82,6 +105,8 @@ async function main() {
             currentStep={currentStep}
             response={response}
             error={error}
+            needsMoreInfo={needsMoreInfo}
+            missingInfo={missingInfo}
         />,
         { exitOnCtrlC: false }  // 讓我們自己處理 Ctrl+C
     );
@@ -97,6 +122,8 @@ async function main() {
                 currentStep={currentStep}
                 response={response}
                 error={error}
+                needsMoreInfo={needsMoreInfo}
+                missingInfo={missingInfo}
             />
         );
     }, 100);

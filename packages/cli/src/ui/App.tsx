@@ -21,11 +21,13 @@ interface AppProps {
     currentStep?: string;
     response?: string;
     error?: string;
+    needsMoreInfo?: boolean;
+    missingInfo?: string;
 }
 
 type ViewState = 'main_menu' | 'ai_query' | 'tool_browser' | 'tool_preview' | 'param_form' | 'result' | 'slo_workflow' | 'metrics_explorer';
 
-export function App({ onQuery, onExecuteTool, mcpManager, isProcessing, currentStep, response, error }: AppProps) {
+export function App({ onQuery, onExecuteTool, mcpManager, isProcessing, currentStep, response, error, needsMoreInfo, missingInfo: _missingInfo }: AppProps) {
     const [view, setView] = useState<ViewState>('main_menu');
     const [query, setQuery] = useState('');
     const [selectedTool, setSelectedTool] = useState<MCPToolInfo | null>(null);
@@ -226,6 +228,30 @@ export function App({ onQuery, onExecuteTool, mcpManager, isProcessing, currentS
                         ) : (
                             <Text dimColor>無結果</Text>
                         )}
+
+                        {/* 如果需要更多資訊，顯示輸入框 */}
+                        {needsMoreInfo && !isProcessing && (
+                            <Box flexDirection="column" marginTop={1}>
+                                <Box borderStyle="single" borderColor="yellow" padding={1} marginBottom={1}>
+                                    <Text color="yellow">💬 請補充資訊：</Text>
+                                </Box>
+                                <Box>
+                                    <Text color="green">&gt; </Text>
+                                    <TextInput
+                                        value={query}
+                                        onChange={setQuery}
+                                        onSubmit={async () => {
+                                            if (query.trim()) {
+                                                await onQuery(query);
+                                                setQuery('');
+                                            }
+                                        }}
+                                        placeholder="輸入補充資訊..."
+                                    />
+                                </Box>
+                            </Box>
+                        )}
+
                         <Box marginTop={1}>
                             <Text dimColor>按 Esc 返回主選單</Text>
                         </Box>

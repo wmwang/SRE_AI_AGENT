@@ -1,0 +1,26 @@
+[
+  {
+    "id": "slo-1",
+    "name": "Frontend Latency",
+    "description": "前端請求在 200 毫秒內完成的百分比。",
+    "target": 97,
+    "window": "1 month",
+    "golden_signal": "Latency"
+  },
+  {
+    "id": "slo-2",
+    "name": "Backend Latency",
+    "description": "後端請求在 300 毫秒內完成的百分比。",
+    "target": 90,
+    "window": "1 month",
+    "golden_signal": "Latency"
+  },
+  {
+    "id": "slo-3",
+    "name": "Error Rate",
+    "description": "導致 5xx 錯誤的請求百分比。",
+    "target": 1,
+    "window": "1 month",
+    "golden_signal": "Errors"
+  }
+]

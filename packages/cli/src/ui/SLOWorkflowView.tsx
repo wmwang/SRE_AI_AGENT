@@ -1,13 +1,91 @@
 import { Box, Text, useInput } from 'ink';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import TextInput from 'ink-text-input';
+import Spinner from 'ink-spinner';
+import Gradient from 'ink-gradient';
 import { SLOGeneratorWorkflow, SLOWorkflowState, SLODefinition } from '../workflows/slo-generator/index.js';
 import type { MCPClientManager } from '../mcp/manager.js';
+
+/**
+ * 打字機效果組件
+ */
+/**
+ * 打字機效果組件
+ */
+function Typewriter({ text, speed = 20, start = true, onComplete }: { text: string; speed?: number; start?: boolean; onComplete?: () => void }) {
+    const [displayedText, setDisplayedText] = useState('');
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    useEffect(() => {
+        if (!start) return;
+
+        if (currentIndex < text.length) {
+            const timer = setTimeout(() => {
+                setDisplayedText(prev => prev + text[currentIndex]);
+                setCurrentIndex(prev => prev + 1);
+            }, speed);
+            return () => clearTimeout(timer);
+        } else if (onComplete) {
+            // 使用 setTimeout 避免在渲染週期內更新狀態
+            const timer = setTimeout(onComplete, 0);
+            return () => clearTimeout(timer);
+        }
+    }, [currentIndex, text, speed, start, onComplete]);
+
+    // 重置當 text 改變時
+    useEffect(() => {
+        setDisplayedText('');
+        setCurrentIndex(0);
+    }, [text]);
+
+    if (!start) return <Text></Text>;
+
+    return <Text wrap="wrap">{displayedText}</Text>;
+}
 
 interface SLOWorkflowViewProps {
     mcpManager: MCPClientManager;
     onComplete: (state: SLOWorkflowState) => void;
     onCancel: () => void;
+}
+
+/**
+ * HSL 轉 Hex 輔助函數
+ */
+function hslToHex(h: number, s: number, l: number) {
+    l /= 100;
+    const a = s * Math.min(l, 1 - l) / 100;
+    const f = (n: number) => {
+        const k = (n + h / 30) % 12;
+        const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');
+    };
+    return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+/**
+ * 彩虹流光文字組件
+ */
+function RainbowText({ text, speed = 50 }: { text: string; speed?: number }) {
+    const [offset, setOffset] = useState(0);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setOffset(prev => (prev + 5) % 360);
+        }, speed);
+        return () => clearInterval(timer);
+    }, [speed]);
+
+    return (
+        <Text>
+            {text.split('').map((char, index) => {
+                // 讓每個字的顏色稍微錯開，形成波浪
+                const hue = (offset - (index * 15)) % 360;
+                const color = hslToHex(hue, 90, 60); // 高飽和度，中亮度
+                return <Text key={index} color={color}>{char}</Text>;
+            })}
+        </Text>
+    );
 }
 
 /**
@@ -41,6 +119,16 @@ export function SLOWorkflowView({ mcpManager, onComplete, onCancel }: SLOWorkflo
             onCancel();
         }
     });
+
+    // 控制打字機順序：-1=部署分析, 0~N=SLO卡片
+    const [animationIndex, setAnimationIndex] = useState(-1);
+
+    // 當步驟變成 review 時，重置動畫
+    useEffect(() => {
+        if (currentStep === 'review') {
+            setAnimationIndex(-1);
+        }
+    }, [currentStep]);
 
     // 開始 Workflow
     const startWorkflow = useCallback(async (yamlPath: string) => {
@@ -163,14 +251,19 @@ export function SLOWorkflowView({ mcpManager, onComplete, onCancel }: SLOWorkflo
     // 渲染進度
     const renderProgress = () => (
         <Box flexDirection="column">
-            <Text>{progressMessage}</Text>
+            <Text>
+                <Text color="green"><Spinner type="dots" /></Text>
+                {' '}<RainbowText text={progressMessage} />
+            </Text>
             <Box marginTop={1}>
-                <Text color="cyan">⏳ 處理中，請稍候...</Text>
+                <Text>
+                    <Spinner type="line" /> <Gradient name="morning">AI 正在處理中，請稍候...</Gradient>
+                </Text>
             </Box>
         </Box>
     );
 
-    // 渲染 SLO 卡片
+    // 渲染 SLO 卡片（緊湊佈局）
     const renderSLOCard = (slo: SLODefinition, index: number) => {
         const signalColors: Record<string, string> = {
             'Latency': 'yellow',
@@ -180,6 +273,10 @@ export function SLOWorkflowView({ mcpManager, onComplete, onCancel }: SLOWorkflo
             'Saturation': 'magenta',
         };
         const color = signalColors[slo.golden_signal] || 'white';
+        const isVisible = index <= animationIndex;
+        const isTyping = index === animationIndex;
+
+        if (!isVisible && index > -1) return null; // 完全未顯示
 
         return (
             <Box
@@ -187,15 +284,18 @@ export function SLOWorkflowView({ mcpManager, onComplete, onCancel }: SLOWorkflo
                 flexDirection="column"
                 borderStyle="round"
                 borderColor={color as any}
-                padding={1}
+                paddingX={1}
+                paddingY={0}
                 marginBottom={1}
             >
+                {/* 標題行 */}
                 <Box>
                     <Text bold color={color as any}>
                         {index + 1}. {slo.name}
                     </Text>
                 </Box>
-                <Box marginTop={1}>
+                {/* 資訊行（合併為單行） */}
+                <Box>
                     <Text backgroundColor={color as any} color="black">
                         {` ${slo.golden_signal} `}
                     </Text>
@@ -210,9 +310,23 @@ export function SLOWorkflowView({ mcpManager, onComplete, onCancel }: SLOWorkflo
                     <Text dimColor> 期間: </Text>
                     <Text>{slo.window}</Text>
                 </Box>
+                {/* 描述行 */}
                 {slo.description && (
-                    <Box marginTop={1}>
-                        <Text wrap="wrap">{slo.description}</Text>
+                    <Box>
+                        <Text dimColor>
+                            {/* 只有在輪到自己 (isTyping) 或已經播放過 (index < animationIndex) 才顯示 */}
+                            {/* 如果已經播放過，直接顯示文字（不用打字機）加速渲染 */}
+                            {index < animationIndex ? (
+                                <Text>{slo.description}</Text>
+                            ) : (
+                                <Typewriter
+                                    text={slo.description}
+                                    speed={10}
+                                    start={isTyping}
+                                    onComplete={() => setAnimationIndex(prev => prev + 1)}
+                                />
+                            )}
+                        </Text>
                     </Box>
                 )}
             </Box>
@@ -233,7 +347,16 @@ export function SLOWorkflowView({ mcpManager, onComplete, onCancel }: SLOWorkflo
                 >
                     <Text bold color="blue">📋 部署分析</Text>
                     <Box marginTop={1}>
-                        <Text wrap="wrap">{state.deploymentAnalysis.summary}</Text>
+                        {/* -1 代表播放部署分析 */}
+                        {animationIndex > -1 ? (
+                            <Text wrap="wrap">{state.deploymentAnalysis.summary}</Text>
+                        ) : (
+                            <Typewriter
+                                text={state.deploymentAnalysis.summary || ''}
+                                speed={15}
+                                onComplete={() => setAnimationIndex(0)}
+                            />
+                        )}
                     </Box>
                 </Box>
             )}
@@ -242,10 +365,12 @@ export function SLOWorkflowView({ mcpManager, onComplete, onCancel }: SLOWorkflo
             <Box marginBottom={1}>
                 <Text bold>💡 建議的 SLO ({state.currentSLOs?.length || 0} 個):</Text>
             </Box>
-            {state.currentSLOs?.map((slo, index) => renderSLOCard(slo, index))}
 
-            {/* 用戶輸入區 */}
-            {isWaitingInput && (
+            {/* 只有當部署分析完成 (animationIndex >= 0) 才開始渲染 SLO 卡片 */}
+            {animationIndex >= 0 && state.currentSLOs?.map((slo, index) => renderSLOCard(slo, index))}
+
+            {/* 用戶輸入區 - 只有當所有動畫這完成後才顯示 */}
+            {isWaitingInput && animationIndex >= (state.currentSLOs?.length || 0) && (
                 <Box flexDirection="column" marginTop={1}>
                     <Text bold color="yellow">{inputPrompt}</Text>
                     <Box marginTop={1}>

@@ -1,5 +1,6 @@
 import { Target, LineChart, Wrench, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 
 const features = [
     {
@@ -26,6 +27,36 @@ const features = [
 ]
 
 export function Dashboard() {
+    const [apiStatus, setApiStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting')
+
+    useEffect(() => {
+        const checkHealth = async () => {
+            try {
+                const res = await fetch('/api/tools', { method: 'GET' })
+                if (res.ok) {
+                    setApiStatus('connected')
+                } else {
+                    setApiStatus('disconnected')
+                }
+            } catch {
+                setApiStatus('disconnected')
+            }
+        }
+
+        // 初次檢測
+        checkHealth()
+
+        // 每 5 秒檢測一次
+        const interval = setInterval(checkHealth, 5000)
+        return () => clearInterval(interval)
+    }, [])
+
+    const statusInfo = {
+        connecting: { text: '連線中...', color: 'bg-yellow-500' },
+        connected: { text: '已連線', color: 'bg-green-500' },
+        disconnected: { text: '未連線', color: 'bg-red-500' },
+    }
+
     return (
         <div className="p-8">
             {/* Header */}
@@ -68,10 +99,11 @@ export function Dashboard() {
             {/* Status */}
             <div className="mt-12 text-center">
                 <div className="inline-flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))]">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    API Gateway: 連線中...
+                    <span className={`w-2 h-2 rounded-full ${statusInfo[apiStatus].color} ${apiStatus === 'connecting' ? 'animate-pulse' : ''}`} />
+                    API Gateway: {statusInfo[apiStatus].text}
                 </div>
             </div>
         </div>
     )
 }
+

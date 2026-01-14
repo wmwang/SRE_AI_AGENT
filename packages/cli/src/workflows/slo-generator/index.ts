@@ -42,6 +42,7 @@ export class SLOGeneratorWorkflow {
             },
             model: config.openai.model,
             temperature: 0,
+            streaming: true,  // 使用 SSE 串流模式
         });
     }
 
