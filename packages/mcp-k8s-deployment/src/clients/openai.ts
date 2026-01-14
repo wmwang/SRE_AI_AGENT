@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { getConfig } from '../config.js';
+import { llmLogger } from '../utils/llm-logger.js';
 
 /**
  * OpenAI Client Wrapper
@@ -23,24 +24,40 @@ export class OpenAIClient {
      * 呼叫 OpenAI API（使用 SSE 串流模式）
      */
     async complete(systemPrompt: string, userPrompt: string): Promise<string> {
-        const stream = await this.client.chat.completions.create({
-            model: this.model,
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt },
-            ],
-            temperature: 0,
-            stream: true,  // SSE 串流模式
+        // 記錄請求
+        llmLogger.log('k8s-analysis', {
+            prompt: `[System]\n${systemPrompt}\n\n[User]\n${userPrompt}`,
         });
 
-        // 收集串流回應
-        let fullContent = '';
-        for await (const chunk of stream) {
-            const delta = chunk.choices[0]?.delta?.content;
-            if (delta) fullContent += delta;
-        }
+        try {
+            const stream = await this.client.chat.completions.create({
+                model: this.model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt },
+                ],
+                temperature: 0,
+                stream: true,  // SSE 串流模式
+            });
 
-        return fullContent;
+            // 收集串流回應
+            let fullContent = '';
+            for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta?.content;
+                if (delta) fullContent += delta;
+            }
+
+            // 記錄回應
+            llmLogger.log('k8s-analysis', { response: fullContent });
+
+            return fullContent;
+        } catch (error) {
+            // 記錄錯誤
+            llmLogger.log('k8s-analysis', {
+                error: error instanceof Error ? error.message : String(error),
+            });
+            throw error;
+        }
     }
 
     /**
