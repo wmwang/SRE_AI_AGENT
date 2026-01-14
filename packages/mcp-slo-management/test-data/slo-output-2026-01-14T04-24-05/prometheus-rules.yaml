@@ -1,0 +1,63 @@
+groups:
+  - name: "guestbook-ui_slo_recording_rules"
+    rules:
+      - record: "slo:slo_1:availability"
+        expr: "sum(up{service=\"guestbook-ui\"}) / count(up{service=\"guestbook-ui\"})"
+      - record: "slo:slo_2:latency_p99"
+        expr: "histogram_quantile(0.99, sum(rate(guestbook-ui_latency_sli_bucket{service=\"guestbook-ui\"}[5m])) by (le))"
+      - record: "slo:slo_3:error_rate"
+        expr: "sum(rate(guestbook-ui_errors_sli_errors_total{service=\"guestbook-ui\"}[5m])) / sum(rate(guestbook-ui_errors_sli_total{service=\"guestbook-ui\"}[5m]))"
+      - record: "slo:slo_5:latency_p99"
+        expr: "histogram_quantile(0.99, sum(rate(guestbook-ui_latency_sli_bucket{service=\"guestbook-ui\"}[5m])) by (le))"
+  - name: "guestbook-ui_slo_alert_rules"
+    rules:
+      - alert: "SLO_API_Availability_Breached"
+        expr: "slo:slo_1:availability < 0.9990000000000001"
+        for: "5m"
+        labels:
+          severity: "warning"
+          slo_id: "slo-1"
+          golden_signal: "Availability"
+        annotations:
+          summary: "SLO API Availability 已違反"
+          description: "API Availability 的目標是 99.9%，但目前已超出閾值。"
+      - alert: "SLO_API_Latency_Breached"
+        expr: "slo:slo_2:latency_p99 > 90"
+        for: "5m"
+        labels:
+          severity: "warning"
+          slo_id: "slo-2"
+          golden_signal: "Latency"
+        annotations:
+          summary: "SLO API Latency 已違反"
+          description: "API Latency 的目標是 95%，但目前已超出閾值。"
+      - alert: "SLO_Error_Rate_Breached"
+        expr: "slo:slo_3:error_rate > 0.99"
+        for: "5m"
+        labels:
+          severity: "warning"
+          slo_id: "slo-3"
+          golden_signal: "Errors"
+        annotations:
+          summary: "SLO Error Rate 已違反"
+          description: "Error Rate 的目標是 1%，但目前已超出閾值。"
+      - alert: "SLO_User_Interaction_Success_Rate_Breached"
+        expr: "slo:slo_4:availability < 0.98"
+        for: "5m"
+        labels:
+          severity: "warning"
+          slo_id: "slo-4"
+          golden_signal: "User Satisfaction"
+        annotations:
+          summary: "SLO User Interaction Success Rate 已違反"
+          description: "User Interaction Success Rate 的目標是 98%，但目前已超出閾值。"
+      - alert: "SLO_Response_Time_for_User_Actions_Breached"
+        expr: "slo:slo_5:latency_p99 > 85"
+        for: "5m"
+        labels:
+          severity: "warning"
+          slo_id: "slo-5"
+          golden_signal: "Latency"
+        annotations:
+          summary: "SLO Response Time for User Actions 已違反"
+          description: "Response Time for User Actions 的目標是 90%，但目前已超出閾值。"

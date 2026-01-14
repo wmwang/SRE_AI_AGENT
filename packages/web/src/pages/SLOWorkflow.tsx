@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Upload, FileCode, Loader2, Check, ArrowRight, Download, Copy, CheckCircle, MessageSquare, Sparkles, AlertCircle } from 'lucide-react'
+import { Upload, FileCode, Loader2, Check, ArrowRight, Download, Copy, CheckCircle, MessageSquare, Sparkles } from 'lucide-react'
 import { analyzeSLO, refineSLO, generateSLOConfigs, type SLO } from '../lib/api'
 
 type Step = 'upload' | 'analyzing' | 'review' | 'refining' | 'generating' | 'complete'
@@ -16,8 +16,8 @@ export function SLOWorkflow() {
     const [isRefining, setIsRefining] = useState(false)
     const [refinementHistory, setRefinementHistory] = useState<string[]>([])
     const [serviceName, setServiceName] = useState('')
-    const [error, setError] = useState<string | null>(null)
-    const [useApi, setUseApi] = useState(true) // 是否使用 API，false 時使用本地 fallback
+    const [_error, setError] = useState<string | null>(null)
+    const [useApi, _setUseApi] = useState(true) // 是否使用 API，false 時使用本地 fallback
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -142,14 +142,14 @@ export function SLOWorkflow() {
                 const exists = newSlos.some(s => s.signal === 'Throughput')
                 if (!exists) {
                     const throughputValue = numbers.find(n => n >= 100 && n <= 1000000) || 1000
-                    newSlos.push({ name: `${svcName} 吞吐量`, target: `> ${throughputValue} req/s`, signal: 'Throughput' })
+                    newSlos.push({ name: `${serviceName} 吞吐量`, target: `> ${throughputValue} req/s`, signal: 'Throughput' })
                     hasChanges = true
                 }
             }
             if (/飽和|saturation|cpu|memory|記憶體|資源/i.test(fb)) {
                 const exists = newSlos.some(s => s.signal === 'Saturation')
                 if (!exists) {
-                    newSlos.push({ name: `${svcName} 資源飽和度`, target: '< 80%', signal: 'Saturation' })
+                    newSlos.push({ name: `${serviceName} 資源飽和度`, target: '< 80%', signal: 'Saturation' })
                     hasChanges = true
                 }
             }

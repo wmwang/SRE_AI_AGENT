@@ -24,13 +24,22 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^22.10.5",
-    "typescript": "^5.7.2",
+    "@types/node": "24.10.7",
     "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   },
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "react": "^18.3.1",
+      "react-dom": "^18.3.1"
+    },
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   }
 }
