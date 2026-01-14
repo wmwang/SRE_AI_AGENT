@@ -5,10 +5,18 @@
 # 設定專案根目錄
 export PROJECT_ROOT="$(pwd)"
 
+# 載入 .env 檔案（如果存在）
+if [ -f ".env" ]; then
+  echo "📄 載入 .env 設定檔..."
+  set -a
+  source .env
+  set +a
+fi
+
 # 檢查環境變數
 if [ -z "$OPENAI_API_KEY" ]; then
   echo "❌ 錯誤: OPENAI_API_KEY 環境變數未設定"
-  echo "請執行: export OPENAI_API_KEY=your-key"
+  echo "請在 .env 檔案中設定，或執行: export OPENAI_API_KEY=your-key"
   exit 1
 fi
 

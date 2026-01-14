@@ -45,7 +45,7 @@ export class LLMLogger {
     /**
      * 記錄 LLM 請求/回應
      */
-    log(type: 'metrics-health' | 'nl-to-promql', data: {
+    log(type: 'metrics-health' | 'nl-to-promql' | 'suggest-hints' | 'analyze-trend' | 'detect-anomalies', data: {
         prompt?: string;
         response?: string;
         error?: string;

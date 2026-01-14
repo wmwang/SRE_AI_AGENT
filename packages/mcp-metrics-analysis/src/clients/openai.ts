@@ -237,7 +237,7 @@ export class OpenAIClient {
     }
 
     /**
-     * 基於上下文生成查詢建議
+     * 基於上下文動態生成查詢建議
      */
     async suggestQueryHints(input: {
         availableMetrics?: string[];
@@ -255,65 +255,234 @@ export class OpenAIClient {
             }>;
         }>;
     }> {
-        // 建構針對 context 的建議
-        const namespace = input.userContext?.defaultNamespace || 'production';
-        const service = input.userContext?.defaultService || 'api';
+        const systemPrompt = `你是一個 SRE 專家。請根據提供的可用指標和使用者上下文，推薦 3-5 組最有價值的 Prometheus 查詢建議。
+請將建議分為不同類別（例如：資源使用、請求流量、錯誤監控等）。
 
-        // 預設建議（基於常見 SRE 需求）
-        const defaultHints = [
-            {
-                category: '🔥 資源使用',
-                suggestions: [
-                    {
-                        text: `${service} 的 CPU 使用率`,
-                        promql: `rate(container_cpu_usage_seconds_total{namespace="${namespace}",pod=~"${service}-.*"}[5m])`,
-                        description: '監控服務的 CPU 使用情況',
-                    },
-                    {
-                        text: `${service} 的記憶體使用量`,
-                        promql: `container_memory_usage_bytes{namespace="${namespace}",pod=~"${service}-.*"}`,
-                        description: '監控服務的記憶體消耗',
-                    },
-                    {
-                        text: `${namespace} 整體資源 Top 5`,
-                        promql: `topk(5, sum by(pod)(rate(container_cpu_usage_seconds_total{namespace="${namespace}"}[5m])))`,
-                        description: '找出資源使用最高的 Pods',
-                    },
-                ],
-            },
-            {
-                category: '🌐 請求流量',
-                suggestions: [
-                    {
-                        text: `${service} 的每秒請求數 (QPS)`,
-                        promql: `sum(rate(http_requests_total{namespace="${namespace}",service="${service}"}[5m]))`,
-                        description: '監控服務的請求流量',
-                    },
-                    {
-                        text: `${service} 的 P95 延遲`,
-                        promql: `histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="${namespace}",service="${service}"}[5m])) by (le))`,
-                        description: '監控 95% 請求的延遲',
-                    },
-                ],
-            },
-            {
-                category: '❌ 錯誤監控',
-                suggestions: [
-                    {
-                        text: `${service} 的 5xx 錯誤率`,
-                        promql: `sum(rate(http_requests_total{namespace="${namespace}",service="${service}",status=~"5.."}[5m])) / sum(rate(http_requests_total{namespace="${namespace}",service="${service}"}[5m]))`,
-                        description: '監控服務的錯誤比例',
-                    },
-                    {
-                        text: `${namespace} 錯誤率 Top 5`,
-                        promql: `topk(5, sum by(service)(rate(http_requests_total{namespace="${namespace}",status=~"5.."}[5m])))`,
-                        description: '找出錯誤最多的服務',
-                    },
-                ],
-            },
-        ];
+## 規則
+1. 輸出必須是有效的 JSON
+2. 針對使用者的 Context (Namespace/Service) 進行客製化
+3. 優先使用提供的Available Metrics
+4. 不要返回解釋文字，只要 JSON
 
-        return { hints: defaultHints };
+## 輸出格式
+{
+  "hints": [
+    {
+      "category": "類別名稱",
+      "suggestions": [
+        { "text": "標題", "promql": "查詢語句", "description": "用途說明" }
+      ]
+    }
+  ]
+}`;
+
+        const userMessage = `Context:
+Namespace: ${input.userContext?.defaultNamespace || 'default'}
+Service: ${input.userContext?.defaultService || 'unknown'}
+
+Available Metrics (Sample):
+${(input.availableMetrics || []).slice(0, 50).join('\n')}
+
+請推薦適合此 Context 的監控查詢。`;
+
+        try {
+            llmLogger.log('suggest-hints', {
+                prompt: `[System]\n${systemPrompt}\n\n[User]\n${userMessage}`,
+                metadata: { context: input.userContext }
+            });
+
+            const completion = await this.client.chat.completions.create({
+                model: this.model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userMessage }
+                ],
+                temperature: 0.2, // 稍微有點創意但保持穩定
+            });
+
+            const content = completion.choices[0]?.message?.content || '';
+            llmLogger.log('suggest-hints', { response: content });
+
+            const cleanContent = content.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
+            return JSON.parse(cleanContent);
+
+        } catch (error) {
+            console.error('[OpenAI Client] Error in suggestQueryHints:', error);
+            // Fallback 到基本的靜態推薦
+            return {
+                hints: [
+                    {
+                        category: "Basic (Fallback)",
+                        suggestions: [
+                            {
+                                text: "CPU Usage",
+                                promql: "rate(container_cpu_usage_seconds_total[5m])",
+                                description: "CPU usage rate"
+                            }
+                        ]
+                    }
+                ]
+            };
+        }
+    }
+
+    /**
+      * AI 分析指標趨勢
+      */
+    async analyzeMetricTrend(input: {
+        promql: string;
+        stats: {
+            min: number;
+            max: number;
+            avg: number;
+            first: number;
+            last: number;
+            changeRate: number;
+        };
+        sampledValues: number[]; // 採樣後的數據點，避免 Token 過多
+    }): Promise<{
+        trend: 'increasing' | 'decreasing' | 'stable' | 'cyclic' | 'erratic';
+        changeRate: string;
+        description: string;
+        significance: 'high' | 'medium' | 'low';
+    }> {
+        const systemPrompt = `你是一個數據分析師。請分析提供的 Time-series 數據點，描述其趨勢特徵。
+
+## 輸出格式 JSON
+{
+  "trend": "increasing" | "decreasing" | "stable" | "cyclic" | "erratic",
+  "changeRate": "變化率文字描述",
+  "description": "對趨勢的詳細描述（繁體中文），包含波動性、週期性等觀察",
+  "significance": "high" | "medium" | "low" (這個趨勢是否值得關注)
+}`;
+
+        const userMessage = `PromQL: ${input.promql}
+Stats:
+- Min: ${input.stats.min}
+- Max: ${input.stats.max}
+- Avg: ${input.stats.avg}
+- First: ${input.stats.first}
+- Last: ${input.stats.last}
+- Simple Change Rate: ${input.stats.changeRate}%
+
+Sampled Data Points (Chronological):
+${JSON.stringify(input.sampledValues)}
+
+請分析趨勢。`;
+
+        try {
+            llmLogger.log('analyze-trend', {
+                prompt: userMessage,
+                metadata: { promql: input.promql }
+            });
+
+            const completion = await this.client.chat.completions.create({
+                model: this.model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userMessage }
+                ],
+                temperature: 0.1,
+            });
+
+            const content = completion.choices[0]?.message?.content || '';
+            llmLogger.log('analyze-trend', { response: content });
+
+            const cleanContent = content.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
+            return JSON.parse(cleanContent);
+
+        } catch (error) {
+            console.error('[OpenAI Client] Error in analyzeMetricTrend:', error);
+            return {
+                trend: 'stable',
+                changeRate: '0%',
+                description: '無法進行 AI 分析，數據不足或連線錯誤',
+                significance: 'low'
+            };
+        }
+    }
+
+    /**
+     * AI 異常檢測解釋
+     */
+    async detectAnomalies(input: {
+        promql: string;
+        statisticalAnomalies: Array<{ timestamp: string, value: number, deviation: number }>;
+        contextData: { avg: number, stdDev: number };
+    }): Promise<{
+        anomalies: Array<{
+            timestamp: string;
+            value: number;
+            isTrueAnomaly: boolean;
+            severity: 'critical' | 'warning' | 'info';
+            explanation: string;
+        }>;
+        summary: string;
+    }> {
+        if (input.statisticalAnomalies.length === 0) {
+            return { anomalies: [], summary: "無檢測到統計異常" };
+        }
+
+        const systemPrompt = `你是一個 SRE 專家。系統透過統計方法（標準差）檢測到了一些潛在異常點。
+請根據上下文判斷這些是否為「真實異常」或是「預期中的波動」。
+
+## 輸出格式 JSON
+{
+  "anomalies": [
+    {
+      "timestamp": "原樣返回",
+      "value": 原樣返回,
+      "isTrueAnomaly": true/false,
+      "severity": "critical" | "warning" | "info",
+      "explanation": "簡短解釋為何是異常或為何不是（繁體中文）"
+    }
+  ],
+  "summary": "整體異常分析總結"
+}`;
+
+        const userMessage = `PromQL: ${input.promql}
+Context Stats: Avg=${input.contextData.avg}, StdDev=${input.contextData.stdDev}
+
+Statistical Candidates:
+${JSON.stringify(input.statisticalAnomalies)}
+
+請進行複判。`;
+
+        try {
+            llmLogger.log('detect-anomalies', {
+                prompt: userMessage,
+                metadata: { candidateCount: input.statisticalAnomalies.length }
+            });
+
+            const completion = await this.client.chat.completions.create({
+                model: this.model,
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userMessage }
+                ],
+                temperature: 0.1,
+            });
+
+            const content = completion.choices[0]?.message?.content || '';
+            llmLogger.log('detect-anomalies', { response: content });
+
+            const cleanContent = content.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
+            return JSON.parse(cleanContent);
+
+        } catch (error) {
+            console.error('[OpenAI Client] Error in detectAnomalies:', error);
+            // Fallback: 信任統計結果
+            return {
+                anomalies: input.statisticalAnomalies.map(a => ({
+                    timestamp: a.timestamp,
+                    value: a.value,
+                    isTrueAnomaly: true,
+                    severity: 'warning',
+                    explanation: '統計異常（AI 分析失敗，回退至統計判斷）'
+                })),
+                summary: 'AI 分析服務暫時不可用，僅顯示統計異常。'
+            };
+        }
     }
 
     /**

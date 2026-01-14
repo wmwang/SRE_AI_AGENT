@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import './env.js';
 
 import { render } from 'ink';
 import { createMCPManager } from './mcp/index.js';

@@ -159,8 +159,33 @@ export class MetricsToolsHandler {
                 };
             }
 
-            // 簡單的趨勢分析
-            const analysis = this.analyzeTrendData(result.data?.result || []);
+            // 1. 本地計算基礎統計
+            const rawValues = (result.data?.result?.[0]?.values || []).map((v: any) => parseFloat(v[1]));
+
+            if (rawValues.length === 0) {
+                return { success: false, error: 'No data points found' };
+            }
+
+            const min = Math.min(...rawValues);
+            const max = Math.max(...rawValues);
+            const avg = rawValues.reduce((a: number, b: number) => a + b, 0) / rawValues.length;
+            const first = rawValues[0] ?? 0;
+            const last = rawValues[rawValues.length - 1] ?? 0;
+            const changeRate = first !== 0 ? ((last - first) / first) * 100 : 0;
+
+            // 2. 數據採樣 (最多保留 50 點以節省 Token)
+            const step = Math.ceil(rawValues.length / 50);
+            const sampledValues = rawValues.filter((_, i) => i % step === 0);
+
+            // 3. 呼叫 LLM 進行趨勢分析
+            const { OpenAIClient } = await import('../clients/openai.js');
+            const openaiClient = new OpenAIClient();
+
+            const aiAnalysis = await openaiClient.analyzeMetricTrend({
+                promql: input.promql,
+                stats: { min, max, avg, first, last, changeRate },
+                sampledValues
+            });
 
             return {
                 success: true,
@@ -169,7 +194,7 @@ export class MetricsToolsHandler {
                     start: new Date(start * 1000).toISOString(),
                     end: new Date(end * 1000).toISOString(),
                 },
-                analysis,
+                analysis: aiAnalysis, // 使用 AI 分析結果
             };
         } catch (error) {
             return {
@@ -202,18 +227,42 @@ export class MetricsToolsHandler {
                 };
             }
 
-            // 異常檢測
-            const anomalies = this.detectAnomaliesInData(
+            // 1. 統計異常檢測 (Pre-filter)
+            const statisticalAnomalies = this.detectAnomaliesInData(
                 result.data?.result || [],
                 input.threshold || 3
             );
+
+            // 2. 計算上下文統計數據
+            const values = (result.data?.result?.[0]?.values || []).map((v: any) => parseFloat(v[1]));
+            const avg = values.length > 0 ? values.reduce((a: number, b: number) => a + b, 0) / values.length : 0;
+            const variance = values.length > 0 ? values.reduce((a: number, b: number) => a + Math.pow(b - avg, 2), 0) / values.length : 0;
+            const stdDev = Math.sqrt(variance);
+
+            // 3. 使用 AI 進行解釋與複判
+            const { OpenAIClient } = await import('../clients/openai.js');
+            const openaiClient = new OpenAIClient();
+
+            // 轉換統計異常格式以符合 OpenAIClient 輸入 (移除 metric 對象，保留數值)
+            const candidates = statisticalAnomalies.map((a: any) => ({
+                timestamp: a.timestamp,
+                value: parseFloat(a.value),
+                deviation: parseFloat(a.deviation)
+            }));
+
+            const aiAnalysis = await openaiClient.detectAnomalies({
+                promql: input.promql,
+                statisticalAnomalies: candidates,
+                contextData: { avg, stdDev }
+            });
 
             return {
                 success: true,
                 duration: input.duration,
                 threshold: input.threshold || 3,
-                anomaliesDetected: anomalies.length,
-                anomalies,
+                anomaliesDetected: aiAnalysis.anomalies.length,
+                anomalies: aiAnalysis.anomalies,
+                summary: aiAnalysis.summary
             };
         } catch (error) {
             return {
@@ -469,66 +518,19 @@ export class MetricsToolsHandler {
         };
     }): Promise<object> {
         try {
-            // 使用本地生成的建議（不需要 OpenAI）
-            const namespace = input.userContext?.defaultNamespace || 'production';
-            const service = input.userContext?.defaultService || 'api';
+            // 動態載入 OpenAI Client
+            const { OpenAIClient } = await import('../clients/openai.js');
+            const openaiClient = new OpenAIClient();
 
-            const hints = [
-                {
-                    category: '🔥 資源使用',
-                    suggestions: [
-                        {
-                            text: `${service} 的 CPU 使用率`,
-                            promql: `rate(container_cpu_usage_seconds_total{namespace="${namespace}",pod=~"${service}-.*"}[5m])`,
-                            description: '監控服務的 CPU 使用情況',
-                        },
-                        {
-                            text: `${service} 的記憶體使用量`,
-                            promql: `container_memory_usage_bytes{namespace="${namespace}",pod=~"${service}-.*"}`,
-                            description: '監控服務的記憶體消耗',
-                        },
-                        {
-                            text: `${namespace} 資源 Top 5`,
-                            promql: `topk(5, sum by(pod)(rate(container_cpu_usage_seconds_total{namespace="${namespace}"}[5m])))`,
-                            description: '找出資源使用最高的 Pods',
-                        },
-                    ],
-                },
-                {
-                    category: '🌐 請求流量',
-                    suggestions: [
-                        {
-                            text: `${service} 的每秒請求數`,
-                            promql: `sum(rate(http_requests_total{namespace="${namespace}",service="${service}"}[5m]))`,
-                            description: '監控服務的請求流量',
-                        },
-                        {
-                            text: `${service} 的 P95 延遲`,
-                            promql: `histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="${namespace}",service="${service}"}[5m])) by (le))`,
-                            description: '監控 95% 請求的延遲',
-                        },
-                    ],
-                },
-                {
-                    category: '❌ 錯誤監控',
-                    suggestions: [
-                        {
-                            text: `${service} 的 5xx 錯誤率`,
-                            promql: `sum(rate(http_requests_total{namespace="${namespace}",service="${service}",status=~"5.."}[5m])) / sum(rate(http_requests_total{namespace="${namespace}",service="${service}"}[5m]))`,
-                            description: '監控服務的錯誤比例',
-                        },
-                        {
-                            text: `${namespace} 錯誤 Top 5`,
-                            promql: `topk(5, sum by(service)(rate(http_requests_total{namespace="${namespace}",status=~"5.."}[5m])))`,
-                            description: '找出錯誤最多的服務',
-                        },
-                    ],
-                },
-            ];
+            // 呼叫 LLM 進行動態推薦
+            const result = await openaiClient.suggestQueryHints({
+                availableMetrics: input.availableMetrics,
+                userContext: input.userContext
+            });
 
             return {
                 success: true,
-                hints,
+                hints: result.hints
             };
         } catch (error) {
             return {
@@ -605,33 +607,7 @@ export class MetricsToolsHandler {
         return value * (multipliers[unit] || 1);
     }
 
-    /**
-     * 分析趨勢資料
-     */
-    private analyzeTrendData(results: Array<{ values?: Array<[number, string]> }>): object {
-        if (results.length === 0 || !results[0]?.values) {
-            return { trend: 'unknown', message: 'No data available' };
-        }
 
-        const values = results[0].values.map(v => parseFloat(v[1]));
-
-        if (values.length < 2) {
-            return { trend: 'unknown', message: 'Insufficient data points' };
-        }
-
-        // 簡單線性趨勢
-        const first = values[0] || 0;
-        const last = values[values.length - 1] || 0;
-        const change = ((last - first) / first) * 100;
-
-        return {
-            trend: change > 5 ? 'increasing' : change < -5 ? 'decreasing' : 'stable',
-            changePercentage: change.toFixed(2),
-            firstValue: first.toFixed(2),
-            lastValue: last.toFixed(2),
-            dataPoints: values.length,
-        };
-    }
 
     /**
      * 在資料中檢測異常

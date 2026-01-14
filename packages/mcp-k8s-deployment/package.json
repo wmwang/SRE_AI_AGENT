@@ -12,6 +12,7 @@
     "dependencies": {
         "@modelcontextprotocol/sdk": "^1.1.0",
         "@sre-agent/shared-memory": "workspace:*",
+        "dotenv": "^17.2.3",
         "openai": "^4.0.0",
         "yaml": "^2.3.4",
         "zod": "^3.22.4",

@@ -36,16 +36,12 @@ import { getConfig } from './config.js';
 class SLOManagementServer {
     private server: Server;
     private memory: SharedMemory;
-    private ai: OpenAIClient;
-    private handler: SLOToolsHandler;
 
     constructor() {
         const config = getConfig();
 
         // 初始化核心組件
         this.memory = new SharedMemory(config.sharedMemoryPath);
-        this.ai = new OpenAIClient();
-        this.handler = new SLOToolsHandler(this.memory, this.ai);
 
         // 建立 MCP Server
         this.server = new Server(
@@ -248,11 +244,15 @@ class SLOManagementServer {
         this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
             const { name, arguments: args } = request.params;
 
+            // 每次請求都建立新的 OpenAI client，避免長效連線問題
+            const ai = new OpenAIClient();
+            const handler = new SLOToolsHandler(this.memory, ai);
+
             try {
                 switch (name) {
                     case 'analyze_k8s_manifests': {
                         const input = AnalyzeK8sManifestsSchema.parse(args);
-                        const result = await this.handler.analyzeK8sManifests(input);
+                        const result = await handler.analyzeK8sManifests(input);
                         return {
                             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
                         };
@@ -260,7 +260,7 @@ class SLOManagementServer {
 
                     case 'track_slo_status': {
                         const input = TrackSLOStatusSchema.parse(args);
-                        const result = await this.handler.trackSLOStatus(input);
+                        const result = await handler.trackSLOStatus(input);
                         return {
                             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
                         };
@@ -268,7 +268,7 @@ class SLOManagementServer {
 
                     case 'calculate_error_budget': {
                         const input = CalculateErrorBudgetSchema.parse(args);
-                        const result = await this.handler.calculateErrorBudget(input);
+                        const result = await handler.calculateErrorBudget(input);
                         return {
                             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
                         };
@@ -276,7 +276,7 @@ class SLOManagementServer {
 
                     case 'recommend_slos': {
                         const input = RecommendSLOsSchema.parse(args);
-                        const result = await this.handler.recommendSLOs(input);
+                        const result = await handler.recommendSLOs(input);
                         return {
                             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
                         };
@@ -284,7 +284,7 @@ class SLOManagementServer {
 
                     case 'update_slo_status': {
                         const input = UpdateSLOStatusSchema.parse(args);
-                        const result = await this.handler.updateSLOStatus(input);
+                        const result = await handler.updateSLOStatus(input);
                         return {
                             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
                         };
@@ -292,7 +292,7 @@ class SLOManagementServer {
 
                     case 'generate_slo_report': {
                         const input = GenerateSLOReportSchema.parse(args);
-                        const result = await this.handler.generateSLOReport(input);
+                        const result = await handler.generateSLOReport(input);
                         return {
                             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
                         };
@@ -300,7 +300,7 @@ class SLOManagementServer {
 
                     case 'generate_prometheus_rules': {
                         const input = GeneratePrometheusRulesSchema.parse(args);
-                        const result = await this.handler.generatePrometheusRules(input);
+                        const result = await handler.generatePrometheusRules(input);
                         return {
                             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
                         };
@@ -308,7 +308,7 @@ class SLOManagementServer {
 
                     case 'generate_grafana_dashboard': {
                         const input = GenerateGrafanaDashboardSchema.parse(args);
-                        const result = await this.handler.generateGrafanaDashboard(input);
+                        const result = await handler.generateGrafanaDashboard(input);
                         return {
                             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
                         };
@@ -333,8 +333,8 @@ class SLOManagementServer {
     }
 
     /**
-   * 啟動 Server
-   */
+     * 啟動 Server
+     */
     async start(): Promise<void> {
         const transport = new StdioServerTransport();
         await this.server.connect(transport);

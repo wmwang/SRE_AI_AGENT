@@ -32,10 +32,6 @@ export function createServer() {
         }
     );
 
-    // 初始化 clients 和 handlers
-    const ai = new OpenAIClient();
-    const handler = new K8sToolsHandler(ai);
-
     // 處理列出 tools 請求
     server.setRequestHandler(ListToolsRequestSchema, async () => {
         return { tools: toolDefinitions };
@@ -44,6 +40,11 @@ export function createServer() {
     // 處理調用 tool 請求
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const { name, arguments: args } = request.params;
+
+        // 每次請求都建立新的 OpenAI client，避免長效連線問題
+        // 及使用新的 Handler 實例
+        const ai = new OpenAIClient();
+        const handler = new K8sToolsHandler(ai);
 
         try {
             let result: object;
