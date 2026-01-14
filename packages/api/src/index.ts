@@ -200,6 +200,99 @@ app.post('/api/metrics/diagnose', async (c) => {
     }
 });
 
+// ============================================
+// Log Explorer API
+// ============================================
+
+// 搜尋日誌
+app.post('/api/logs/search', async (c) => {
+    if (!mcpManager) {
+        return c.json({ error: 'MCP Manager not initialized' }, 500);
+    }
+
+    try {
+        const { query, timeRange, filters, size } = await c.req.json();
+
+        // 呼叫 MCP Log Server 的 search_logs 工具
+        const result = await mcpManager.callTool('log', 'search_logs', {
+            query: query || '',
+            timeRange: timeRange || {
+                start: Math.floor(Date.now() / 1000) - 3600,
+                end: Math.floor(Date.now() / 1000),
+            },
+            filters: filters || {},
+            size: size || 100,
+        });
+
+        return c.json({ success: true, result });
+    } catch (error) {
+        console.error('[API] Error searching logs:', error);
+        return c.json({
+            success: false,
+            error: error instanceof Error ? error.message : String(error)
+        }, 500);
+    }
+});
+
+// AI 生成日誌摘要
+app.post('/api/logs/summarize', async (c) => {
+    if (!mcpManager) {
+        return c.json({ error: 'MCP Manager not initialized' }, 500);
+    }
+
+    try {
+        const { query, timeRange, service, maxLogs } = await c.req.json();
+
+        // 呼叫 MCP Log Server 的 summarize_logs 工具
+        const result = await mcpManager.callTool('log', 'summarize_logs', {
+            query: query || '',
+            timeRange: timeRange || {
+                start: Math.floor(Date.now() / 1000) - 3600,
+                end: Math.floor(Date.now() / 1000),
+            },
+            service: service,
+            maxLogs: maxLogs || 500,
+        });
+
+        return c.json({ success: true, result });
+    } catch (error) {
+        console.error('[API] Error summarizing logs:', error);
+        return c.json({
+            success: false,
+            error: error instanceof Error ? error.message : String(error)
+        }, 500);
+    }
+});
+
+// AI 分析錯誤模式
+app.post('/api/logs/analyze', async (c) => {
+    if (!mcpManager) {
+        return c.json({ error: 'MCP Manager not initialized' }, 500);
+    }
+
+    try {
+        const { timeRange, service, minOccurrences } = await c.req.json();
+
+        // 呼叫 MCP Log Server 的 analyze_error_patterns 工具
+        const result = await mcpManager.callTool('log', 'analyze_error_patterns', {
+            timeRange: timeRange || {
+                start: Math.floor(Date.now() / 1000) - 3600,
+                end: Math.floor(Date.now() / 1000),
+            },
+            service: service,
+            minOccurrences: minOccurrences || 1,
+        });
+
+        return c.json({ success: true, result });
+    } catch (error) {
+        console.error('[API] Error analyzing logs:', error);
+        return c.json({
+            success: false,
+            error: error instanceof Error ? error.message : String(error)
+        }, 500);
+    }
+});
+
 // SSE 端點：串流 AI 回應
 app.get('/api/stream/analyze', async (c) => {
     return streamSSE(c, async (stream) => {
@@ -244,6 +337,9 @@ async function main() {
     console.log('  POST /api/slo/generate    - Generate Prometheus/Grafana configs');
     console.log('  POST /api/metrics/query   - Translate NL to PromQL');
     console.log('  POST /api/metrics/diagnose - AI diagnosis');
+    console.log('  POST /api/logs/search      - Search logs');
+    console.log('  POST /api/logs/summarize   - AI log summary');
+    console.log('  POST /api/logs/analyze     - AI error pattern analysis');
 }
 
 main().catch(console.error);

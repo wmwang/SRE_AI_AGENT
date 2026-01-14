@@ -1,4 +1,4 @@
-import { Target, LineChart, Wrench, Sparkles } from 'lucide-react'
+import { Target, LineChart, Wrench, Sparkles, FileSearch } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 
@@ -16,6 +16,13 @@ const features = [
         icon: LineChart,
         to: '/metrics',
         gradient: 'from-green-500 to-emerald-500',
+    },
+    {
+        title: 'Log Explorer',
+        description: '搜尋日誌並使用 AI 進行智慧分析與錯誤模式識別',
+        icon: FileSearch,
+        to: '/logs',
+        gradient: 'from-orange-500 to-amber-500',
     },
     {
         title: 'Tool Browser',
@@ -74,7 +81,7 @@ export function Dashboard() {
             </div>
 
             {/* Feature Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
                 {features.map((feature) => (
                     <Link
                         key={feature.to}

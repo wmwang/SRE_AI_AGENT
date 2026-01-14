@@ -8,8 +8,14 @@ if "%OPENAI_API_KEY%"=="" (
   exit /b 1
 )
 
+if not exist "%USERPROFILE%\.sre-agent" mkdir "%USERPROFILE%\.sre-agent"
+
 if "%PROMETHEUS_ENDPOINT%"=="" (
   set MOCK_PROMETHEUS=true
+)
+
+if "%ELASTICSEARCH_ENDPOINT%"=="" (
+  set MOCK_ELASTICSEARCH=true
 )
 
 echo [INFO] Starting SRE AI Agent...

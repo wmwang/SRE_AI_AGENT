@@ -26,6 +26,11 @@ export async function createMCPManager(): Promise<MCPClientManager> {
             name: 'K8s Deployment',
             ...config.mcpServers.k8s,
         },
+        {
+            id: 'log',
+            name: 'Log Analysis',
+            ...config.mcpServers.log,
+        },
     ];
 
     // 連接到所有啟用的 servers

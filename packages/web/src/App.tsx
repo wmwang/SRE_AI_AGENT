@@ -3,6 +3,7 @@ import { Layout } from './components/Layout'
 import { Dashboard } from './pages/Dashboard'
 import { SLOWorkflow } from './pages/SLOWorkflow'
 import { MetricsExplorer } from './pages/MetricsExplorer'
+import { LogExplorer } from './pages/LogExplorer'
 import { ToolBrowser } from './pages/ToolBrowser'
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="slo" element={<SLOWorkflow />} />
           <Route path="metrics" element={<MetricsExplorer />} />
+          <Route path="logs" element={<LogExplorer />} />
           <Route path="tools" element={<ToolBrowser />} />
         </Route>
       </Routes>

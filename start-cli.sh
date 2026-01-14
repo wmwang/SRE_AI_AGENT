@@ -20,10 +20,19 @@ if [ -z "$OPENAI_API_KEY" ]; then
   exit 1
 fi
 
+# 創建日誌目錄
+mkdir -p ~/.sre-agent
+
 # 如果沒有設定 Prometheus endpoint，自動啟用 Mock 模式
 if [ -z "$PROMETHEUS_ENDPOINT" ]; then
   export MOCK_PROMETHEUS=true
   echo "ℹ️  未偵測到 Prometheus，自動啟用 Mock 模式"
+fi
+
+# 如果沒有設定 Elasticsearch endpoint，自動啟用 Mock 模式
+if [ -z "$ELASTICSEARCH_ENDPOINT" ]; then
+  export MOCK_ELASTICSEARCH=true
+  echo "ℹ️  未偵測到 Elasticsearch，自動啟用 Mock 模式"
 fi
 
 echo "🚀 啟動 SRE AI Agent..."
@@ -51,6 +60,11 @@ if [ ! -d "packages/mcp-k8s-deployment/dist" ]; then
   pnpm --filter @sre-agent/mcp-k8s-deployment build
 fi
 
+if [ ! -d "packages/mcp-log-analysis/dist" ]; then
+  echo "⚠️  Log Analysis Server 未建置，正在建置..."
+  pnpm --filter @sre-agent/mcp-log-analysis build
+fi
+
 if [ ! -d "packages/cli/dist" ]; then
   echo "⚠️  CLI 未建置，正在建置..."
   pnpm --filter @sre-agent/cli build
@@ -63,6 +77,7 @@ echo ""
 export SLO_SERVER_PATH="$(pwd)/packages/mcp-slo-management/dist/index.js"
 export METRICS_SERVER_PATH="$(pwd)/packages/mcp-metrics-analysis/dist/index.js"
 export K8S_SERVER_PATH="$(pwd)/packages/mcp-k8s-deployment/dist/index.js"
+export LOG_SERVER_PATH="$(pwd)/packages/mcp-log-analysis/dist/index.js"
 
 echo "🤖 啟動 CLI Agent..."
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

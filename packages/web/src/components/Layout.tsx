@@ -4,13 +4,15 @@ import {
     Target,
     LineChart,
     Wrench,
-    Sparkles
+    Sparkles,
+    FileSearch
 } from 'lucide-react'
 
 const navItems = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/slo', icon: Target, label: 'SLO Workflow' },
     { to: '/metrics', icon: LineChart, label: 'Metrics Explorer' },
+    { to: '/logs', icon: FileSearch, label: 'Log Explorer' },
     { to: '/tools', icon: Wrench, label: 'Tool Browser' },
 ]
 

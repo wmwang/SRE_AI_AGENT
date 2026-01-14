@@ -20,7 +20,11 @@ export function MainMenu({ onSelectCallback }: MainMenuProps) {
             value: 'metrics_explorer',
         },
         {
-            label: '[4] Tool Browser - Browse MCP Tools',
+            label: '[4] Log Explorer - Search & Analyze Logs',
+            value: 'log_explorer',
+        },
+        {
+            label: '[5] Tool Browser - Browse MCP Tools',
             value: 'tools',
         },
         {

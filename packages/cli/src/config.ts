@@ -26,6 +26,11 @@ export interface CLIConfig {
             args: string[];
             enabled: boolean;
         };
+        log: {
+            command: string;
+            args: string[];
+            enabled: boolean;
+        };
     };
 
     /** Shared Memory 路徑 */
@@ -63,6 +68,14 @@ export const defaultConfig: CLIConfig = {
             args: [
                 process.env.K8S_SERVER_PATH ||
                 './packages/mcp-k8s-deployment/dist/index.js',
+            ],
+            enabled: true,
+        },
+        log: {
+            command: 'node',
+            args: [
+                process.env.LOG_SERVER_PATH ||
+                './packages/mcp-log-analysis/dist/index.js',
             ],
             enabled: true,
         },

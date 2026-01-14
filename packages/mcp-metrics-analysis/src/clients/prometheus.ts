@@ -27,15 +27,21 @@ export class PrometheusClient {
     private endpoint: string;
     private timeout: number;
     private mockMode: boolean;
+    private headers: Record<string, string>;
 
     constructor() {
         const config = getConfig();
         this.endpoint = config.prometheus.endpoint;
         this.timeout = config.prometheus.timeout || 30000;
         this.mockMode = config.mockMode || false;
+        this.headers = config.prometheus.headers || {};
 
         if (this.mockMode) {
             mcpLogger.log('[Prometheus Client] Running in MOCK MODE');
+        }
+
+        if (Object.keys(this.headers).length > 0) {
+            mcpLogger.log('[Prometheus Client] Custom headers configured:', Object.keys(this.headers).join(', '));
         }
     }
 
@@ -80,6 +86,7 @@ export class PrometheusClient {
 
             const response = await fetch(url.toString(), {
                 method: 'GET',
+                headers: this.headers,
                 signal: controller.signal,
             });
 
@@ -156,6 +163,7 @@ export class PrometheusClient {
 
             const response = await fetch(url.toString(), {
                 method: 'GET',
+                headers: this.headers,
                 signal: controller.signal,
             });
 
@@ -202,7 +210,9 @@ export class PrometheusClient {
         const url = new URL(`${this.endpoint}/api/v1/label/__name__/values`);
         mcpLogger.log('[Prometheus Client] Fetching metric names from:', url.toString());
 
-        const response = await fetch(url.toString());
+        const response = await fetch(url.toString(), {
+            headers: this.headers,
+        });
         mcpLogger.log('[Prometheus Client] Response status:', response.status, response.statusText);
 
         if (!response.ok) {
@@ -233,7 +243,9 @@ export class PrometheusClient {
         const url = new URL(`${this.endpoint}/api/v1/label/${label}/values`);
 
         try {
-            const response = await fetch(url.toString());
+            const response = await fetch(url.toString(), {
+                headers: this.headers,
+            });
             const result = await response.json() as { status: string; data?: string[] };
 
             if (result.status === 'success') {
@@ -269,7 +281,9 @@ export class PrometheusClient {
         const url = new URL(`${this.endpoint}/api/v1/labels`);
 
         try {
-            const response = await fetch(url.toString());
+            const response = await fetch(url.toString(), {
+                headers: this.headers,
+            });
 
             if (!response.ok) {
                 const text = await response.text();

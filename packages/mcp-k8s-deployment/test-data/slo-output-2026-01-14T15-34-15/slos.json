@@ -1,0 +1,45 @@
+[
+  {
+    "id": "slo-1",
+    "name": "Frontend Latency",
+    "description": "前端響應用戶請求所需的時間。",
+    "target": 95,
+    "threshold": 250,
+    "window": "1 month",
+    "golden_signal": "Latency"
+  },
+  {
+    "id": "slo-2",
+    "name": "Backend Latency",
+    "description": "後端處理來自前端請求所需的時間。",
+    "target": 95,
+    "threshold": 350,
+    "window": "1 month",
+    "golden_signal": "Latency"
+  },
+  {
+    "id": "slo-3",
+    "name": "Error Rate",
+    "description": "網頁應用程式中請求失敗的百分比（5xx 錯誤）。",
+    "target": 98,
+    "window": "1 month",
+    "golden_signal": "Errors"
+  },
+  {
+    "id": "slo-4",
+    "name": "Traffic Volume",
+    "description": "網頁應用程式每秒處理的請求數量（QPS）。",
+    "target": 1200,
+    "window": "1 month",
+    "golden_signal": "Traffic"
+  },
+  {
+    "id": "slo-5",
+    "name": "CPU Utilization",
+    "description": "網頁應用程式伺服器的平均 CPU 使用率。",
+    "target": 70,
+    "threshold": 80,
+    "window": "1 month",
+    "golden_signal": "Saturation"
+  }
+]

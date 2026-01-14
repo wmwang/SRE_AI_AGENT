@@ -6,6 +6,8 @@ export interface MetricsServerConfig {
     prometheus: {
         endpoint: string;
         timeout?: number;
+        /** 自訂 HTTP headers（例如認證 token） */
+        headers?: Record<string, string>;
     };
 
     /** OpenAI API 配置（用於異常分析） */
@@ -29,6 +31,10 @@ export const defaultConfig: MetricsServerConfig = {
     prometheus: {
         endpoint: process.env.PROMETHEUS_ENDPOINT || 'http://localhost:9090',
         timeout: parseInt(process.env.PROMETHEUS_TIMEOUT || '30000'),
+        // 支援 JSON 格式的 headers，例如：{"X-API-Key": "your-key"}
+        headers: process.env.PROMETHEUS_HEADERS
+            ? JSON.parse(process.env.PROMETHEUS_HEADERS)
+            : undefined,
     },
     openai: {
         apiKey: process.env.OPENAI_API_KEY || '',

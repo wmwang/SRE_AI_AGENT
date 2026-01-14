@@ -11,6 +11,7 @@ import { ParamForm } from './ParamForm.js';
 import { ResultFormatter } from './ResultFormatter.js';
 import { SLOWorkflowView } from './SLOWorkflowView.js';
 import { MetricsExplorerView } from './MetricsExplorerView.js';
+import { LogExplorerView } from './LogExplorerView.js';
 import type { MCPToolInfo, MCPClientManager } from '../mcp/manager.js';
 
 interface AppProps {
@@ -25,7 +26,7 @@ interface AppProps {
     missingInfo?: string;
 }
 
-type ViewState = 'main_menu' | 'ai_query' | 'tool_browser' | 'tool_preview' | 'param_form' | 'result' | 'slo_workflow' | 'metrics_explorer';
+type ViewState = 'main_menu' | 'ai_query' | 'tool_browser' | 'tool_preview' | 'param_form' | 'result' | 'slo_workflow' | 'metrics_explorer' | 'log_explorer';
 
 export function App({ onQuery, onExecuteTool, mcpManager, isProcessing, currentStep, response, error, needsMoreInfo, missingInfo: _missingInfo }: AppProps) {
     const [view, setView] = useState<ViewState>('main_menu');
@@ -64,6 +65,7 @@ export function App({ onQuery, onExecuteTool, mcpManager, isProcessing, currentS
                     if (value === 'ai') setView('ai_query');
                     if (value === 'slo_workflow') setView('slo_workflow');
                     if (value === 'metrics_explorer') setView('metrics_explorer');
+                    if (value === 'log_explorer') setView('log_explorer');
                     if (value === 'tools') setView('tool_browser');
                     if (value === 'exit') process.exit(0);
                 }} />
@@ -92,6 +94,16 @@ export function App({ onQuery, onExecuteTool, mcpManager, isProcessing, currentS
             <MetricsExplorerView
                 mcpManager={mcpManager}
                 onExit={() => setView('main_menu')}
+            />
+        );
+    }
+
+    // --- View: Log Explorer ---
+    if (view === 'log_explorer') {
+        return (
+            <LogExplorerView
+                mcpManager={mcpManager}
+                onBack={() => setView('main_menu')}
             />
         );
     }
