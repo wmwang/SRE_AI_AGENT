@@ -20,19 +20,27 @@ export class OpenAIClient {
     }
 
     /**
-     * 呼叫 OpenAI API
+     * 呼叫 OpenAI API（使用 SSE 串流模式）
      */
     async complete(systemPrompt: string, userPrompt: string): Promise<string> {
-        const response = await this.client.chat.completions.create({
+        const stream = await this.client.chat.completions.create({
             model: this.model,
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt },
             ],
             temperature: 0,
+            stream: true,  // SSE 串流模式
         });
 
-        return response.choices[0]?.message?.content || '';
+        // 收集串流回應
+        let fullContent = '';
+        for await (const chunk of stream) {
+            const delta = chunk.choices[0]?.delta?.content;
+            if (delta) fullContent += delta;
+        }
+
+        return fullContent;
     }
 
     /**
