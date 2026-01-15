@@ -277,17 +277,17 @@ export class OpenAIClient {
 }`;
 
         const userMessage = `Context:
-Namespace: ${input.userContext?.defaultNamespace || 'default'}
-Service: ${input.userContext?.defaultService || 'unknown'}
+Namespace: ${input.userContext?.defaultNamespace || 'None (Do not filter by namespace unless necessary)'}
+Service: ${input.userContext?.defaultService || 'None'}
 
-Available Metrics (Sample):
+Available Metrics(Sample):
 ${(input.availableMetrics || []).slice(0, 50).join('\n')}
 
 請推薦適合此 Context 的監控查詢。`;
 
         try {
             llmLogger.log('suggest-hints', {
-                prompt: `[System]\n${systemPrompt}\n\n[User]\n${userMessage}`,
+                prompt: `[System]\n${systemPrompt} \n\n[User]\n${userMessage} `,
                 metadata: { context: input.userContext }
             });
 
@@ -310,7 +310,7 @@ ${(input.availableMetrics || []).slice(0, 50).join('\n')}
             const content = fullContent;
             llmLogger.log('suggest-hints', { response: content });
 
-            const cleanContent = content.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
+            const cleanContent = content.replace(/^```json\n |\n```$/g, '').replace(/^```\n |\n```$/g, '').trim();
             return JSON.parse(cleanContent);
 
         } catch (error) {
@@ -353,15 +353,15 @@ ${(input.availableMetrics || []).slice(0, 50).join('\n')}
         description: string;
         significance: 'high' | 'medium' | 'low';
     }> {
-        const systemPrompt = `你是一個數據分析師。請分析提供的 Time-series 數據點，描述其趨勢特徵。
+        const systemPrompt = `你是一個數據分析師。請分析提供的 Time - series 數據點，描述其趨勢特徵。
 
 ## 輸出格式 JSON
 {
-  "trend": "increasing" | "decreasing" | "stable" | "cyclic" | "erratic",
-  "changeRate": "變化率文字描述",
-  "description": "對趨勢的詳細描述（繁體中文），包含波動性、週期性等觀察",
-  "significance": "high" | "medium" | "low" (這個趨勢是否值得關注)
-}`;
+    "trend": "increasing" | "decreasing" | "stable" | "cyclic" | "erratic",
+        "changeRate": "變化率文字描述",
+            "description": "對趨勢的詳細描述（繁體中文），包含波動性、週期性等觀察",
+                "significance": "high" | "medium" | "low"(這個趨勢是否值得關注)
+} `;
 
         const userMessage = `PromQL: ${input.promql}
 Stats:
@@ -372,7 +372,7 @@ Stats:
 - Last: ${input.stats.last}
 - Simple Change Rate: ${input.stats.changeRate}%
 
-Sampled Data Points (Chronological):
+    Sampled Data Points(Chronological):
 ${JSON.stringify(input.sampledValues)}
 
 請分析趨勢。`;
@@ -402,7 +402,7 @@ ${JSON.stringify(input.sampledValues)}
             const content = fullContent;
             llmLogger.log('analyze-trend', { response: content });
 
-            const cleanContent = content.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
+            const cleanContent = content.replace(/^```json\n |\n```$/g, '').replace(/^```\n |\n```$/g, '').trim();
             return JSON.parse(cleanContent);
 
         } catch (error) {
@@ -442,20 +442,20 @@ ${JSON.stringify(input.sampledValues)}
 
 ## 輸出格式 JSON
 {
-  "anomalies": [
-    {
-      "timestamp": "原樣返回",
-      "value": 原樣返回,
-      "isTrueAnomaly": true/false,
-      "severity": "critical" | "warning" | "info",
-      "explanation": "簡短解釋為何是異常或為何不是（繁體中文）"
-    }
-  ],
-  "summary": "整體異常分析總結"
-}`;
+    "anomalies": [
+        {
+            "timestamp": "原樣返回",
+            "value": 原樣返回,
+            "isTrueAnomaly": true / false,
+            "severity": "critical" | "warning" | "info",
+            "explanation": "簡短解釋為何是異常或為何不是（繁體中文）"
+        }
+    ],
+        "summary": "整體異常分析總結"
+} `;
 
         const userMessage = `PromQL: ${input.promql}
-Context Stats: Avg=${input.contextData.avg}, StdDev=${input.contextData.stdDev}
+Context Stats: Avg = ${input.contextData.avg}, StdDev = ${input.contextData.stdDev}
 
 Statistical Candidates:
 ${JSON.stringify(input.statisticalAnomalies)}
@@ -487,7 +487,7 @@ ${JSON.stringify(input.statisticalAnomalies)}
             const content = fullContent;
             llmLogger.log('detect-anomalies', { response: content });
 
-            const cleanContent = content.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
+            const cleanContent = content.replace(/^```json\n |\n```$/g, '').replace(/^```\n |\n```$/g, '').trim();
             return JSON.parse(cleanContent);
 
         } catch (error) {
@@ -533,37 +533,37 @@ ${JSON.stringify(input.statisticalAnomalies)}
 
 ## 分析維度與規則（嚴格遵守）
 
-1. **趨勢分析**：
-   - 變化率絕對值 > 20% 必須標記為 "increasing" 或 "decreasing"
-   - 變化率絕對值 <= 20% 才可視為 "stable"
-   - **嚴格一致性**：如果 trend 是 increasing/decreasing，summary 絕對不能說「穩定」！必須說「有顯著上升/下降」。
+1. ** 趨勢分析 **：
+- 變化率絕對值 > 20 % 必須標記為 "increasing" 或 "decreasing"
+    - 變化率絕對值 <= 20 % 才可視為 "stable"
+        - ** 嚴格一致性 **：如果 trend 是 increasing / decreasing，summary 絕對不能說「穩定」！必須說「有顯著上升 / 下降」。
 
-2. **健康評估**：
-   - **healthy**: 指標在預期範圍內
-   - **warning**: 變化率 > 50% 且無合理預期（如流量突增），或接近異常閾值
-   - **critical**: 服務不可用、錯誤率飆升或資源耗盡
-   - **unknown**: 數據不足
+2. ** 健康評估 **：
+   - ** healthy **: 指標在預期範圍內
+    - ** warning **: 變化率 > 50 % 且無合理預期（如流量突增），或接近異常閾值
+        - ** critical **: 服務不可用、錯誤率飆升或資源耗盡
+            - ** unknown **: 數據不足
 
-3. **數值解讀**：
-   - 注意數值基數：從 1.0 變為 1.5 雖然是 +50%，但絕對值變化小。分析時應指出「雖然變化率高，但絕對數值仍在低位」。
+3. ** 數值解讀 **：
+- 注意數值基數：從 1.0 變為 1.5 雖然是 + 50 %，但絕對值變化小。分析時應指出「雖然變化率高，但絕對數值仍在低位」。
 
-4. **改善建議**：提供具體的 Prometheus 監控建議或 K8s 資源調整建議。
+4. ** 改善建議 **：提供具體的 Prometheus 監控建議或 K8s 資源調整建議。
 
 ## 輸出格式（JSON）
 {
-  "health": "healthy" | "warning" | "critical" | "unknown",
-  "analysis": {
-    "summary": "一句話總結（繁體中文），必須與 trend 方向一致，若變化大請直接指出",
-    "findings": [
-      { "severity": "info|warning|critical", "message": "發現描述", "suggestion": "建議" }
-    ],
-    "trend": {
-      "direction": "increasing" | "decreasing" | "stable",
-      "changeRate": "變化率，如 +50.0%"
-    }
-  },
-  "recommendations": ["建議1", "建議2"]
-}`;
+    "health": "healthy" | "warning" | "critical" | "unknown",
+        "analysis": {
+        "summary": "一句話總結（繁體中文），必須與 trend 方向一致，若變化大請直接指出",
+            "findings": [
+                { "severity": "info|warning|critical", "message": "發現描述", "suggestion": "建議" }
+            ],
+                "trend": {
+            "direction": "increasing" | "decreasing" | "stable",
+                "changeRate": "變化率，如 +50.0%"
+        }
+    },
+    "recommendations": ["建議1", "建議2"]
+} `;
 
         // 準備數據摘要
         const dataPoints = input.metricsData[0]?.values || [];
@@ -578,9 +578,9 @@ ${JSON.stringify(input.statisticalAnomalies)}
 
         const userMessage = `請分析以下指標：
 
-**PromQL**: ${input.promql}
+** PromQL **: ${input.promql}
 
-**數據摘要**:
+** 數據摘要 **:
 - 資料點數量: ${dataSummary.count}
 - 最小值: ${dataSummary.min.toFixed(2)}
 - 最大值: ${dataSummary.max.toFixed(2)}
@@ -589,13 +589,13 @@ ${JSON.stringify(input.statisticalAnomalies)}
 - 最新值: ${dataSummary.latest.toFixed(2)}
 - 變化率: ${dataSummary.first !== 0 ? (((dataSummary.latest - dataSummary.first) / dataSummary.first) * 100).toFixed(1) : 0}%
 
-**時間範圍**: ${new Date(input.timeRange.start * 1000).toISOString()} ~ ${new Date(input.timeRange.end * 1000).toISOString()}
+** 時間範圍 **: ${new Date(input.timeRange.start * 1000).toISOString()} ~${new Date(input.timeRange.end * 1000).toISOString()}
 `;
 
         try {
             // Log the complete prompt
             llmLogger.log('metrics-health', {
-                prompt: `[System Prompt]\n${systemPrompt}\n\n[User Message]\n${userMessage}`,
+                prompt: `[System Prompt]\n${systemPrompt} \n\n[User Message]\n${userMessage} `,
                 metadata: { promql: input.promql, dataPointsCount: dataSummary.count }
             });
 
@@ -625,7 +625,7 @@ ${JSON.stringify(input.statisticalAnomalies)}
             llmLogger.log('metrics-health', { response: content });
 
             // 清理 Markdown 標記
-            const cleanContent = content.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
+            const cleanContent = content.replace(/^```json\n |\n```$/g, '').replace(/^```\n |\n```$/g, '').trim();
             return JSON.parse(cleanContent);
         } catch (error) {
             console.error('[OpenAI Client] Error in analyzeMetricsHealth:', error);
@@ -638,14 +638,14 @@ ${JSON.stringify(input.statisticalAnomalies)}
             return {
                 health: Math.abs(changeRate) > 50 ? 'warning' : 'healthy',
                 analysis: {
-                    summary: `指標變化率為 ${changeRate.toFixed(1)}%`,
+                    summary: `指標變化率為 ${changeRate.toFixed(1)}% `,
                     findings: [{
                         severity: Math.abs(changeRate) > 50 ? 'warning' : 'info',
-                        message: `最新值 ${dataSummary.latest.toFixed(2)}，平均值 ${dataSummary.avg.toFixed(2)}`,
+                        message: `最新值 ${dataSummary.latest.toFixed(2)}，平均值 ${dataSummary.avg.toFixed(2)} `,
                     }],
                     trend: {
                         direction: changeRate > 5 ? 'increasing' : changeRate < -5 ? 'decreasing' : 'stable',
-                        changeRate: `${changeRate >= 0 ? '+' : ''}${changeRate.toFixed(1)}%`,
+                        changeRate: `${changeRate >= 0 ? '+' : ''}${changeRate.toFixed(1)}% `,
                     },
                 },
                 recommendations: ['建議持續監控此指標'],
