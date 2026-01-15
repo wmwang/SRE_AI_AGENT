@@ -76,20 +76,34 @@ export async function generateHintsNode(
     mcpManager: MCPManager
 ): Promise<Partial<MetricsExplorerState>> {
     try {
+        debugLog('[Metrics Explorer] Generating hints with', state.availableMetrics.length, 'metrics');
+
         const result = await mcpManager.callTool('metrics', 'suggest_query_hints', {
             availableMetrics: state.availableMetrics.slice(0, 50),
             userContext: state.userContext,
         });
 
-        const data = result.content?.[0]?.text
-            ? JSON.parse(result.content[0].text)
-            : {};
+        // 解析回應 - 支援兩種格式：
+        // 1. MCP 格式: { content: [{ text: '{"hints": [...]}' }] }
+        // 2. 直接返回: { success: true, hints: [...] }
+        let hints: any[] = [];
+        if (result.content?.[0]?.text) {
+            const parsed = JSON.parse(result.content[0].text);
+            hints = parsed.hints || [];
+        } else if (result.hints) {
+            hints = result.hints;
+        } else if (result.success && Array.isArray(result.hints)) {
+            hints = result.hints;
+        }
+
+        debugLog('[Metrics Explorer] Generated hints count:', hints.length);
 
         return {
-            metricHints: data.hints || [],
-            currentStep: '已生成查詢建議',
+            metricHints: hints,
+            currentStep: `已生成 ${hints.length} 組查詢建議`,
         };
     } catch (error) {
+        debugLog('[Metrics Explorer] Generate hints error:', error);
         return {
             error: error instanceof Error ? error.message : String(error),
             currentStep: '生成建議時發生錯誤',
