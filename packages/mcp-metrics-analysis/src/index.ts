@@ -297,16 +297,22 @@ class MetricsAnalysisServer {
             try {
                 switch (name) {
                     case 'query_metrics': {
+                        mcpLogger.log('[Metrics MCP] query_metrics called');
                         const input = QueryMetricsSchema.parse(args);
+                        mcpLogger.log('[Metrics MCP] Input:', input);
                         const result = await this.handler.queryMetrics(input);
+                        mcpLogger.log('[Metrics MCP] Result success:', (result as any).success);
                         return {
                             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
                         };
                     }
 
                     case 'query_metrics_range': {
+                        mcpLogger.log('[Metrics MCP] query_metrics_range called');
                         const input = QueryMetricsRangeSchema.parse(args);
+                        mcpLogger.log('[Metrics MCP] Input:', input);
                         const result = await this.handler.queryMetricsRange(input);
+                        mcpLogger.log('[Metrics MCP] Result success:', (result as any).success);
                         return {
                             content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
                         };

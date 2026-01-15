@@ -77,24 +77,32 @@ ${input.userContext ? `使用者上下文:
         try {
             llmLogger.log('nl-to-es-query', { prompt: `${systemPrompt}\n\n${userMessage}` });
 
-            const response = await this.client.chat.completions.create({
+            const stream = await this.client.chat.completions.create({
                 model: this.model,
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userMessage },
                 ],
                 temperature: 0,
-                response_format: { type: 'json_object' },
+                stream: true,  // SSE 串流
             });
 
-            const content = response.choices[0]?.message?.content;
-            if (!content) {
+            // 收集串流回應
+            let fullContent = '';
+            for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta?.content;
+                if (delta) fullContent += delta;
+            }
+
+            if (!fullContent) {
                 throw new Error('No response from OpenAI');
             }
 
-            llmLogger.log('nl-to-es-query', { response: content });
+            llmLogger.log('nl-to-es-query', { response: fullContent });
 
-            return JSON.parse(content);
+            // 清理 Markdown 標記
+            const cleanContent = fullContent.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
+            return JSON.parse(cleanContent);
         } catch (error) {
             console.error('[OpenAI Client] translateNLToESQuery error:', error);
             throw error;
@@ -147,24 +155,32 @@ ${input.context ? `上下文: ${input.context}` : ''}`;
                 metadata: { errorCount: input.errors.length }
             });
 
-            const response = await this.client.chat.completions.create({
+            const stream = await this.client.chat.completions.create({
                 model: this.model,
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userMessage },
                 ],
                 temperature: 0,
-                response_format: { type: 'json_object' },
+                stream: true,  // SSE 串流
             });
 
-            const content = response.choices[0]?.message?.content;
-            if (!content) {
+            // 收集串流回應
+            let fullContent = '';
+            for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta?.content;
+                if (delta) fullContent += delta;
+            }
+
+            if (!fullContent) {
                 throw new Error('No response from OpenAI');
             }
 
-            llmLogger.log('analyze-patterns', { response: content });
+            llmLogger.log('analyze-patterns', { response: fullContent });
 
-            return JSON.parse(content);
+            // 清理 Markdown 標記
+            const cleanContent = fullContent.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
+            return JSON.parse(cleanContent);
         } catch (error) {
             console.error('[OpenAI Client] analyzeErrorPatterns error:', error);
             throw error;
@@ -227,24 +243,32 @@ ${topErrors.length > 0 ? `\n常見錯誤:\n${topErrors.map(e => `- ${e.message} 
                 metadata: { totalLogs: input.logs.length, errors: errorLogs.length }
             });
 
-            const response = await this.client.chat.completions.create({
+            const stream = await this.client.chat.completions.create({
                 model: this.model,
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userMessage },
                 ],
                 temperature: 0,
-                response_format: { type: 'json_object' },
+                stream: true,  // SSE 串流
             });
 
-            const content = response.choices[0]?.message?.content;
-            if (!content) {
+            // 收集串流回應
+            let fullContent = '';
+            for await (const chunk of stream) {
+                const delta = chunk.choices[0]?.delta?.content;
+                if (delta) fullContent += delta;
+            }
+
+            if (!fullContent) {
                 throw new Error('No response from OpenAI');
             }
 
-            llmLogger.log('summarize', { response: content });
+            llmLogger.log('summarize', { response: fullContent });
 
-            const result = JSON.parse(content);
+            // 清理 Markdown 標記
+            const cleanContent = fullContent.replace(/^```json\n|\n```$/g, '').replace(/^```\n|\n```$/g, '').trim();
+            const result = JSON.parse(cleanContent);
 
             // 確保包含統計數據
             return {

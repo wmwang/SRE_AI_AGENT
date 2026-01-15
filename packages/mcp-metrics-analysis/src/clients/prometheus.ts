@@ -146,6 +146,10 @@ export class PrometheusClient {
         url.searchParams.append('end', end.toString());
         url.searchParams.append('step', step);
 
+        // Log the query
+        mcpLogger.log('[Prometheus Client] Querying range:', promql, `(${start} to ${end}, step ${step})`);
+        mcpLogger.log('[Prometheus Client] Full URL:', url.toString());
+
         // DEBUG: 輸出查詢
         if (process.env.DEBUG_PROMETHEUS === 'true') {
             console.error('\n========== PROMETHEUS RANGE QUERY DEBUG ==========');

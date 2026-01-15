@@ -61,7 +61,22 @@ OPENAI_API_KEY="sk-..."
 
 # [選填] Prometheus 端點
 PROMETHEUS_ENDPOINT="http://localhost:9090"
+
+# [選填] Prometheus 認證 Headers（JSON 格式）
+# 支援 Bearer Token、Basic Auth、API Key 等認證方式
+PROMETHEUS_HEADERS='{"Authorization": "Bearer your-token"}'
 ```
+
+#### Prometheus 認證設定範例
+
+若你的 Prometheus 需要認證（如 Grafana Cloud、企業內部 Prometheus），可使用以下設定：
+
+| 認證方式 | 設定範例 |
+|---------|---------|
+| Bearer Token | `'{"Authorization": "Bearer eyJhbGci..."}'` |
+| Basic Auth | `'{"Authorization": "Basic dXNlcjpwYXNz"}'` |
+| API Key | `'{"X-API-Key": "your-api-key"}'` |
+| Grafana Cloud | `'{"Authorization": "Bearer glc_..."}'` |
 
 ### 4. 啟動系統 (Running)
 

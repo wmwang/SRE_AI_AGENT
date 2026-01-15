@@ -25,10 +25,8 @@ function HintsCarousel({
     const [selectedCategory, setSelectedCategory] = useState(0);
     const [selectedHint, setSelectedHint] = useState(0);
 
-    // 只在 focus 時監聽鍵盤
+    // 使用 isActive 選項控制是否接收按鍵事件
     useInput((_input, key) => {
-        if (!isFocused) return;
-
         if (key.leftArrow) {
             setSelectedCategory(prev => Math.max(0, prev - 1));
             setSelectedHint(0);
@@ -48,11 +46,12 @@ function HintsCarousel({
         } else if (key.return) {
             const category = hints[selectedCategory];
             const hint = category?.suggestions[selectedHint];
+            console.error('[DEBUG HintsCarousel] Enter pressed, hint:', JSON.stringify(hint));
             if (hint) {
                 onSelect({ text: hint.text, promql: hint.promql });
             }
         }
-    });
+    }, { isActive: isFocused });
 
     if (!hints.length) return null;
 

@@ -13,12 +13,7 @@ if [ -f ".env" ]; then
   set +a
 fi
 
-# 檢查環境變數
-if [ -z "$OPENAI_API_KEY" ]; then
-  echo "❌ 錯誤: OPENAI_API_KEY 環境變數未設定"
-  echo "請在 .env 檔案中設定，或執行: export OPENAI_API_KEY=your-key"
-  exit 1
-fi
+
 
 # 創建日誌目錄
 mkdir -p ~/.sre-agent
