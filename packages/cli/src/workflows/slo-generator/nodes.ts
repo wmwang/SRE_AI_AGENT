@@ -149,36 +149,62 @@ export async function refineNode(
     callbacks: WorkflowCallbacks
 ): Promise<Partial<SLOWorkflowState>> {
     callbacks.onProgress?.('🔄 AI 正在根據反饋調整 SLO...');
+    console.error('[refineNode] Starting with feedback:', state.userFeedback);
 
     const currentSLOsJson = JSON.stringify(state.currentSLOs, null, 2);
 
-    const prompt = `你是一位 SRE 專家。根據用戶的反饋修改 SLO 建議。
-
-目前的 SLO 建議：
-${currentSLOsJson}
-
-用戶反饋：${state.userFeedback}
-
+    // 使用正確的 [system, user] 格式
+    const systemPrompt = `你是一位 SRE 專家。你的任務是根據用戶反饋修改 SLO 建議。
 請根據反饋修改 SLO，輸出修改後的 JSON 陣列（格式與輸入相同）。
 只輸出 JSON，不要其他說明。`;
 
-    try {
-        llmLogger.log('plan', { prompt, metadata: { userFeedback: state.userFeedback } });
+    const userPrompt = `目前的 SLO 建議：
+${currentSLOsJson}
 
-        // 使用 stream() 實現 SSE 串流
-        const stream = await llm.stream(prompt);
+用戶反饋：${state.userFeedback}`;
+
+    // 建構 messages 陣列
+    const messages = [
+        { role: 'system' as const, content: systemPrompt },
+        { role: 'user' as const, content: userPrompt },
+    ];
+
+    try {
+        llmLogger.log('plan', {
+            prompt: `[System Prompt]\n${systemPrompt}\n\n[User Prompt]\n${userPrompt}`,
+            metadata: { userFeedback: state.userFeedback }
+        });
+        console.error('[refineNode] Calling llm.stream() with messages array...');
+
+        // 使用 messages 陣列進行串流
+        const stream = await llm.stream(messages);
+        console.error('[refineNode] Stream created, starting iteration...');
+
         let content = '';
-        let charCount = 0;
+        let chunkCount = 0;
 
         for await (const chunk of stream) {
+            chunkCount++;
             const chunkText = typeof chunk.content === 'string' ? chunk.content : '';
             content += chunkText;
-            charCount += chunkText.length;
+
+            // 每個 chunk 都記錄（調試用）
+            if (chunkCount <= 3 || chunkCount % 10 === 0) {
+                console.error(`[refineNode] Chunk #${chunkCount}: +${chunkText.length} chars, total: ${content.length}`);
+            }
 
             // 每 50 個字符更新一次進度
-            if (charCount % 50 < chunkText.length) {
+            if (content.length % 50 < chunkText.length) {
                 callbacks.onProgress?.(`🔄 AI 生成中... (${content.length} 字符)`);
             }
+        }
+
+        console.error(`[refineNode] Stream complete. Total chunks: ${chunkCount}, content length: ${content.length}`);
+
+        if (content.length === 0) {
+            console.error('[refineNode] ERROR: LLM returned empty content!');
+            callbacks.onProgress?.('⚠️ LLM 回應為空，請重試');
+            return { currentStep: 'review' };
         }
 
         callbacks.onProgress?.('✅ AI 回應完成，正在解析...');
@@ -195,7 +221,8 @@ ${currentSLOsJson}
         let refinedSLOs;
         try {
             refinedSLOs = JSON.parse(jsonStr);
-        } catch {
+        } catch (parseError) {
+            console.error('[refineNode] JSON parse failed, trying array extraction...', parseError);
             // 嘗試從內容中提取 JSON 陣列
             const arrayMatch = content.match(/\[[\s\S]*\]/);
             if (arrayMatch) {
@@ -206,6 +233,7 @@ ${currentSLOsJson}
         }
 
         callbacks.onProgress?.('✅ SLO 調整完成');
+        console.error('[refineNode] Success! Returning refined SLOs');
 
         return {
             currentSLOs: refinedSLOs,
@@ -213,7 +241,10 @@ ${currentSLOsJson}
             currentStep: 'review', // 回到審核步驟
         };
     } catch (error) {
-        callbacks.onProgress?.('⚠️ 無法解析修改，保留原有設定');
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error('[refineNode] ERROR:', errorMsg);
+        console.error('[refineNode] Full error:', error);
+        callbacks.onProgress?.(`⚠️ 調整失敗: ${errorMsg}`);
         return {
             currentStep: 'review',
         };
