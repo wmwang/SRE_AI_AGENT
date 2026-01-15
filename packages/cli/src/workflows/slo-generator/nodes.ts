@@ -141,14 +141,14 @@ export async function reviewNode(
 }
 
 /**
- * Refine Node - 根據用戶反饋修正 SLO
+ * Refine Node - 根據用戶反饋修正 SLO (使用 SSE 串流)
  */
 export async function refineNode(
     state: SLOWorkflowState,
     llm: ChatOpenAI,
     callbacks: WorkflowCallbacks
 ): Promise<Partial<SLOWorkflowState>> {
-    callbacks.onProgress?.('🔄 根據反饋調整 SLO...');
+    callbacks.onProgress?.('🔄 AI 正在根據反饋調整 SLO...');
 
     const currentSLOsJson = JSON.stringify(state.currentSLOs, null, 2);
 
@@ -164,8 +164,24 @@ ${currentSLOsJson}
 
     try {
         llmLogger.log('plan', { prompt, metadata: { userFeedback: state.userFeedback } });
-        const response = await llm.invoke(prompt);
-        const content = response.content.toString();
+
+        // 使用 stream() 實現 SSE 串流
+        const stream = await llm.stream(prompt);
+        let content = '';
+        let charCount = 0;
+
+        for await (const chunk of stream) {
+            const chunkText = typeof chunk.content === 'string' ? chunk.content : '';
+            content += chunkText;
+            charCount += chunkText.length;
+
+            // 每 50 個字符更新一次進度
+            if (charCount % 50 < chunkText.length) {
+                callbacks.onProgress?.(`🔄 AI 生成中... (${content.length} 字符)`);
+            }
+        }
+
+        callbacks.onProgress?.('✅ AI 回應完成，正在解析...');
         llmLogger.log('plan', { response: content });
 
         // 解析 JSON
@@ -175,7 +191,21 @@ ${currentSLOsJson}
             jsonStr = jsonMatch[1] || content;
         }
 
-        const refinedSLOs = JSON.parse(jsonStr);
+        // 嘗試直接解析，如果失敗則嘗試清理
+        let refinedSLOs;
+        try {
+            refinedSLOs = JSON.parse(jsonStr);
+        } catch {
+            // 嘗試從內容中提取 JSON 陣列
+            const arrayMatch = content.match(/\[[\s\S]*\]/);
+            if (arrayMatch) {
+                refinedSLOs = JSON.parse(arrayMatch[0]);
+            } else {
+                throw new Error('無法解析 JSON');
+            }
+        }
+
+        callbacks.onProgress?.('✅ SLO 調整完成');
 
         return {
             currentSLOs: refinedSLOs,
