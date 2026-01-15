@@ -52,4 +52,9 @@ set "METRICS_SERVER_PATH=%CD%\packages\mcp-metrics-analysis\dist\index.js"
 set "K8S_SERVER_PATH=%CD%\packages\mcp-k8s-deployment\dist\index.js"
 set "LOG_SERVER_PATH=%CD%\packages\mcp-log-analysis\dist\index.js"
 
-call pnpm --filter @sre-agent/cli start
+echo [DEBUG] LOG_SERVER_PATH: %LOG_SERVER_PATH%
+echo [DEBUG] PROMETHEUS_ENDPOINT: %PROMETHEUS_ENDPOINT%
+
+echo.
+echo [INFO] Launching CLI directly with Node...
+node packages\cli\dist\index.js
