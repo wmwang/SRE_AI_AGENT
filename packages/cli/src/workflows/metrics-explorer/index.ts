@@ -210,7 +210,11 @@ export class MetricsExplorerWorkflow {
      * 直接執行 PromQL（用於預設查詢，跳過翻譯）
      */
     async executePromQL(promql: string, explanation: string = ''): Promise<void> {
-        this.updateState({
+        debugLog('[Metrics Explorer] executePromQL called with:', promql);
+
+        // 先更新 state
+        this.state = {
+            ...this.state,
             promql,
             queryExplanation: explanation,
             translationConfidence: 1.0,
@@ -218,10 +222,14 @@ export class MetricsExplorerWorkflow {
             isLoading: true,
             currentStep: '正在查詢數據...',
             error: null,
-        });
+        };
+        // 通知訂閱者
+        this.listeners.forEach(listener => listener(this.state));
 
         try {
+            debugLog('[Metrics Explorer] Calling queryMetricsNode with promql:', this.state.promql);
             const queryResult = await queryMetricsNode(this.state, this.mcpManager);
+            debugLog('[Metrics Explorer] queryMetricsNode result:', JSON.stringify(queryResult).slice(0, 200));
             this.updateState(queryResult);
 
             this.updateState({
@@ -229,6 +237,7 @@ export class MetricsExplorerWorkflow {
                 currentStep: '查詢完成',
             });
         } catch (error) {
+            debugLog('[Metrics Explorer] executePromQL error:', error);
             this.updateState({
                 isLoading: false,
                 mode: 'error',

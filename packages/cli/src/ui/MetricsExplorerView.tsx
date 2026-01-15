@@ -15,15 +15,20 @@ import { MetricsExplorerWorkflow } from '../workflows/metrics-explorer/index.js'
  */
 function HintsCarousel({
     hints,
-    onSelect
+    onSelect,
+    isFocused
 }: {
     hints: MetricsExplorerState['metricHints'];
     onSelect: (hint: { text: string; promql: string }) => void;
+    isFocused: boolean;
 }) {
     const [selectedCategory, setSelectedCategory] = useState(0);
     const [selectedHint, setSelectedHint] = useState(0);
 
+    // 只在 focus 時監聽鍵盤
     useInput((_input, key) => {
+        if (!isFocused) return;
+
         if (key.leftArrow) {
             setSelectedCategory(prev => Math.max(0, prev - 1));
             setSelectedHint(0);
@@ -53,12 +58,14 @@ function HintsCarousel({
 
     return (
         <Box flexDirection="column" marginBottom={1}>
-            <Text bold color="cyan">💡 快速查詢建議 (← → 切換類別, ↑ ↓ Enter 選擇)</Text>
+            <Text bold color={isFocused ? "cyan" : "gray"}>
+                💡 快速查詢建議 {isFocused ? "(← → 切換類別, ↑ ↓ Enter 選擇)" : "(按 Tab 切換焦點)"}
+            </Text>
             <Box marginTop={1}>
                 {hints.map((category, i) => (
                     <Box key={i} marginRight={2}>
                         <Text
-                            color={i === selectedCategory ? 'yellow' : 'gray'}
+                            color={i === selectedCategory ? (isFocused ? 'yellow' : 'gray') : 'gray'}
                             bold={i === selectedCategory}
                         >
                             {category.category}
@@ -68,8 +75,8 @@ function HintsCarousel({
             </Box>
             <Box flexDirection="column" marginTop={1} marginLeft={2}>
                 {hints[selectedCategory]?.suggestions.map((suggestion, i) => (
-                    <Text key={i} color={i === selectedHint ? 'green' : 'white'}>
-                        {i === selectedHint ? '▶ ' : '  '}
+                    <Text key={i} color={i === selectedHint && isFocused ? 'green' : 'white'}>
+                        {i === selectedHint && isFocused ? '▶ ' : '  '}
                         {suggestion.text}
                     </Text>
                 ))}
@@ -77,6 +84,7 @@ function HintsCarousel({
         </Box>
     );
 }
+
 
 /**
  * ASCII 圖表渲染
@@ -226,6 +234,7 @@ export function MetricsExplorerView({ mcpManager, onExit }: MetricsExplorerViewP
     const [state, setState] = useState<MetricsExplorerState | null>(null);
     const [workflow, setWorkflow] = useState<MetricsExplorerWorkflow | null>(null);
     const [query, setQuery] = useState('');
+    const [hintsMode, setHintsMode] = useState(true); // true = 焦點在建議區, false = 焦點在輸入框
 
     // 初始化 workflow
     useEffect(() => {
@@ -248,8 +257,12 @@ export function MetricsExplorerView({ mcpManager, onExit }: MetricsExplorerViewP
     // 全域鍵盤處理（總是可用）
     useInput((input, key) => {
         if (state && !state.isLoading) {
+            // Tab 鍵切換焦點
+            if (key.tab) {
+                setHintsMode(prev => !prev);
+            }
             // Ctrl+R 或單純 R（無輸入時）刷新
-            if (key.ctrl && input === 'r' && state.promql) {
+            else if (key.ctrl && input === 'r' && state.promql) {
                 workflow?.refresh();
             }
             // Ctrl+D 或單純 D（無輸入時）診斷
@@ -273,6 +286,11 @@ export function MetricsExplorerView({ mcpManager, onExit }: MetricsExplorerViewP
     // 處理建議選擇（直接執行 PromQL，不需要翻譯）
     const handleHintSelect = async (hint: { text: string; promql: string }) => {
         if (!workflow) return;
+        console.error('[DEBUG] handleHintSelect called with hint:', JSON.stringify(hint));
+        if (!hint.promql) {
+            console.error('[DEBUG] ERROR: hint.promql is empty!');
+            return;
+        }
         await workflow.executePromQL(hint.promql, hint.text);
     };
 
@@ -305,18 +323,19 @@ export function MetricsExplorerView({ mcpManager, onExit }: MetricsExplorerViewP
             <Box flexDirection="column" marginBottom={1}>
                 {/* 查詢建議 */}
                 {state.metricHints.length > 0 && !state.isLoading && (
-                    <HintsCarousel hints={state.metricHints} onSelect={handleHintSelect} />
+                    <HintsCarousel hints={state.metricHints} onSelect={handleHintSelect} isFocused={hintsMode} />
                 )}
 
                 {/* 輸入框 */}
                 {!state.isLoading && (
                     <Box>
-                        <Text color="gray">🔍 查詢: </Text>
+                        <Text color={hintsMode ? "gray" : "cyan"}>🔍 查詢{hintsMode ? '' : ' (輸入模式)'}: </Text>
                         <TextInput
                             value={query}
                             onChange={setQuery}
                             onSubmit={handleSubmit}
-                            placeholder="輸入自然語言或選擇上方建議..."
+                            placeholder="輸入自然語言或按 Tab 選擇上方建議..."
+                            focus={!hintsMode}
                         />
                     </Box>
                 )}
