@@ -30,18 +30,31 @@ export async function discoverMetricsNode(
         // 使用 discover_labels 取得 labels
         const labelsResult = await mcpManager.callTool('metrics', 'discover_labels', {});
 
-        const availableMetrics = metricsResult.content?.[0]?.text
-            ? JSON.parse(metricsResult.content[0].text).metrics || []
-            : [];
+        // 解析 metrics - 支援兩種格式：
+        // 1. MCP 格式: { content: [{ text: '{"metrics": [...]}' }] }
+        // 2. 直接返回: { success: true, metrics: [...] }
+        let availableMetrics: string[] = [];
+        if (metricsResult.content?.[0]?.text) {
+            const parsed = JSON.parse(metricsResult.content[0].text);
+            availableMetrics = parsed.metrics || [];
+        } else if (metricsResult.metrics) {
+            availableMetrics = metricsResult.metrics;
+        }
 
-        const labelsData = labelsResult.content?.[0]?.text
-            ? JSON.parse(labelsResult.content[0].text)
-            : {};
+        debugLog('[Metrics Explorer] Discovered metrics count:', availableMetrics.length);
+
+        // 解析 labels - 同樣支援兩種格式
+        let labelsData: any = {};
+        if (labelsResult.content?.[0]?.text) {
+            labelsData = JSON.parse(labelsResult.content[0].text);
+        } else if (labelsResult.commonLabels || labelsResult.allLabels) {
+            labelsData = labelsResult;
+        }
 
         return {
             availableMetrics,
             availableLabels: labelsData.commonLabels || {},
-            currentStep: '已探索可用指標',
+            currentStep: `已探索 ${availableMetrics.length} 個指標`,
             mode: 'idle',
         };
     } catch (error) {
