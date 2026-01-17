@@ -2,21 +2,21 @@
  * SLO Generator Workflow - Nodes
  * 
  * 定義 LangGraph workflow 的各個節點
+ * 
+ * 這個版本使用抽象介面，不依賴具體的 MCP 或 LLM 實作
  */
 
-import type { ChatOpenAI } from '@langchain/openai';
-import { llmLogger } from '../../utils/llm-logger.js';
-import type { MCPClientManager } from '../../mcp/manager.js';
-import type { SLOWorkflowState, SLODefinition, WorkflowCallbacks } from './state.js';
+import type { MCPToolCaller, LLMClient, WorkflowEventEmitter } from '../types.js';
+import type { SLOWorkflowState, SLODefinition } from './state.js';
 
 /**
  * Input Node - 讀取並驗證輸入
  */
 export async function inputNode(
     state: SLOWorkflowState,
-    callbacks: WorkflowCallbacks
+    emitter: WorkflowEventEmitter
 ): Promise<Partial<SLOWorkflowState>> {
-    callbacks.onProgress?.('📂 讀取 K8s YAML...');
+    emitter.emit({ type: 'progress', message: '📂 讀取 K8s YAML...' });
 
     let yamlContent = state.yamlContent;
 
@@ -48,14 +48,14 @@ export async function inputNode(
  */
 export async function analyzeNode(
     state: SLOWorkflowState,
-    mcpManager: MCPClientManager,
-    callbacks: WorkflowCallbacks
+    mcpCaller: MCPToolCaller,
+    emitter: WorkflowEventEmitter
 ): Promise<Partial<SLOWorkflowState>> {
-    callbacks.onProgress?.('🔍 分析部署配置...');
+    emitter.emit({ type: 'progress', message: '🔍 分析部署配置...' });
 
     try {
         // 調用 K8s analyze_deployment
-        const analysisResult = await mcpManager.callTool(
+        const analysisResult = await mcpCaller.callTool(
             'k8s',
             'analyze_deployment',
             { yaml: state.yamlContent }
@@ -65,10 +65,10 @@ export async function analyzeNode(
             throw new Error(analysisResult.error || '分析失敗');
         }
 
-        callbacks.onProgress?.('💡 生成 SLO 建議...');
+        emitter.emit({ type: 'progress', message: '💡 生成 SLO 建議...' });
 
         // 調用 SLO recommend_slos
-        const sloResult = await mcpManager.callTool(
+        const sloResult = await mcpCaller.callTool(
             'slo',
             'recommend_slos',
             {
@@ -112,13 +112,17 @@ export async function analyzeNode(
  */
 export async function reviewNode(
     state: SLOWorkflowState,
-    callbacks: WorkflowCallbacks
+    emitter: WorkflowEventEmitter
 ): Promise<Partial<SLOWorkflowState>> {
-    callbacks.onStepChange?.('review', state);
+    emitter.emit({
+        type: 'step_change',
+        step: 'review',
+        data: state
+    });
 
     // 等待用戶輸入
-    if (callbacks.onWaitingForInput) {
-        const feedback = await callbacks.onWaitingForInput(
+    if (emitter.requestInput) {
+        const feedback = await emitter.requestInput(
             '請審核以上 SLO 建議。輸入修改意見，或輸入 "確認" 繼續：'
         );
 
@@ -145,14 +149,13 @@ export async function reviewNode(
  */
 export async function refineNode(
     state: SLOWorkflowState,
-    llm: ChatOpenAI,
-    callbacks: WorkflowCallbacks
+    llmClient: LLMClient,
+    emitter: WorkflowEventEmitter
 ): Promise<Partial<SLOWorkflowState>> {
-    callbacks.onProgress?.('🔄 AI 正在根據反饋調整 SLO...');
+    emitter.emit({ type: 'progress', message: '🔄 AI 正在根據反饋調整 SLO...' });
 
     const currentSLOsJson = JSON.stringify(state.currentSLOs, null, 2);
 
-    // 使用正確的 [system, user] 格式
     const systemPrompt = `你是一位 SRE 專家。你的任務是根據用戶反饋修改 SLO 建議。
 請根據反饋修改 SLO，輸出修改後的 JSON 陣列（格式與輸入相同）。
 只輸出 JSON，不要其他說明。`;
@@ -162,20 +165,13 @@ ${currentSLOsJson}
 
 用戶反饋：${state.userFeedback}`;
 
-    // 建構 messages 陣列
     const messages = [
         { role: 'system' as const, content: systemPrompt },
         { role: 'user' as const, content: userPrompt },
     ];
 
     try {
-        llmLogger.log('plan', {
-            prompt: `[System Prompt]\n${systemPrompt}\n\n[User Prompt]\n${userPrompt}`,
-            metadata: { userFeedback: state.userFeedback }
-        });
-
-        // 使用 messages 陣列進行串流
-        const stream = await llm.stream(messages);
+        const stream = llmClient.stream(messages);
 
         let content = '';
         let lastUpdateLength = 0;
@@ -184,20 +180,18 @@ ${currentSLOsJson}
             const chunkText = typeof chunk.content === 'string' ? chunk.content : '';
             content += chunkText;
 
-            // 每 100 個字符更新一次進度（降低更新頻率）
             if (content.length - lastUpdateLength >= 100) {
                 lastUpdateLength = content.length;
-                callbacks.onProgress?.(`🔄 AI 生成中... (${content.length} 字符)`);
+                emitter.emit({ type: 'progress', message: `🔄 AI 生成中... (${content.length} 字符)` });
             }
         }
 
         if (content.length === 0) {
-            callbacks.onProgress?.('⚠️ LLM 回應為空，請重試');
+            emitter.emit({ type: 'progress', message: '⚠️ LLM 回應為空，請重試' });
             return { currentStep: 'review' };
         }
 
-        callbacks.onProgress?.('✅ AI 回應完成，正在解析...');
-        llmLogger.log('plan', { response: content });
+        emitter.emit({ type: 'progress', message: '✅ AI 回應完成，正在解析...' });
 
         // 解析 JSON
         let jsonStr = content;
@@ -206,12 +200,10 @@ ${currentSLOsJson}
             jsonStr = jsonMatch[1] || content;
         }
 
-        // 嘗試直接解析，如果失敗則嘗試清理
         let refinedSLOs;
         try {
             refinedSLOs = JSON.parse(jsonStr);
         } catch {
-            // 嘗試從內容中提取 JSON 陣列
             const arrayMatch = content.match(/\[[\s\S]*\]/);
             if (arrayMatch) {
                 refinedSLOs = JSON.parse(arrayMatch[0]);
@@ -220,16 +212,16 @@ ${currentSLOsJson}
             }
         }
 
-        callbacks.onProgress?.('✅ SLO 調整完成');
+        emitter.emit({ type: 'progress', message: '✅ SLO 調整完成' });
 
         return {
             currentSLOs: refinedSLOs,
             userFeedback: undefined,
-            currentStep: 'review', // 回到審核步驟
+            currentStep: 'review',
         };
     } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        callbacks.onProgress?.(`⚠️ 調整失敗: ${errorMsg}`);
+        emitter.emit({ type: 'progress', message: `⚠️ 調整失敗: ${errorMsg}` });
         return {
             currentStep: 'review',
         };
@@ -241,14 +233,13 @@ ${currentSLOsJson}
  */
 export async function generateNode(
     state: SLOWorkflowState,
-    mcpManager: MCPClientManager,
-    callbacks: WorkflowCallbacks
+    mcpCaller: MCPToolCaller,
+    emitter: WorkflowEventEmitter
 ): Promise<Partial<SLOWorkflowState>> {
-    callbacks.onProgress?.('📊 生成 Prometheus Rules...');
+    emitter.emit({ type: 'progress', message: '📊 生成 Prometheus Rules...' });
 
     try {
-        // 生成 Prometheus Rules
-        const promResult = await mcpManager.callTool(
+        const promResult = await mcpCaller.callTool(
             'slo',
             'generate_prometheus_rules',
             {
@@ -258,10 +249,9 @@ export async function generateNode(
             }
         ) as any;
 
-        callbacks.onProgress?.('📈 生成 Grafana Dashboard...');
+        emitter.emit({ type: 'progress', message: '📈 生成 Grafana Dashboard...' });
 
-        // 生成 Grafana Dashboard
-        const grafanaResult = await mcpManager.callTool(
+        const grafanaResult = await mcpCaller.callTool(
             'slo',
             'generate_grafana_dashboard',
             {
@@ -287,9 +277,6 @@ export async function generateNode(
 
 // ==================== Helper Functions ====================
 
-/**
- * 推斷服務類型
- */
 export function inferServiceType(analysis: any): string {
     const resources = analysis.resources || [];
     const kinds = resources.map((r: any) => r.kind?.toLowerCase());
@@ -303,9 +290,6 @@ export function inferServiceType(analysis: any): string {
     return 'api';
 }
 
-/**
- * 推斷服務名稱
- */
 export function inferServiceName(analysis: any): string {
     const resources = analysis.resources || [];
     const deployment = resources.find((r: any) => r.kind === 'Deployment');

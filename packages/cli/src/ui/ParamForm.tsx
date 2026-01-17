@@ -101,9 +101,7 @@ export function ParamForm({ tool, onSubmit, onCancel }: ParamFormProps) {
     const { fields, properties, required } = parseJSONSchema(tool.inputSchema);
 
     useEffect(() => {
-        console.error('[ParamForm] Tool:', tool.name);
-        console.error('[ParamForm] Schema:', JSON.stringify(tool.inputSchema, null, 2));
-        console.error('[ParamForm] Parsed fields:', fields);
+        // Debug logs removed to prevent Windows flicker
         setInitialized(true);
     }, []);
 
@@ -142,7 +140,6 @@ export function ParamForm({ tool, onSubmit, onCancel }: ParamFormProps) {
             const fileContent = readFileContent(value.trim());
             if (fileContent) {
                 finalValue = fileContent;
-                console.error(`[ParamForm] Read file: ${value} (${fileContent.length} bytes)`);
             } else if (fs.existsSync(value.trim())) {
                 // File exists but couldn't read
                 setFileError(`無法讀取檔案: ${value}`);

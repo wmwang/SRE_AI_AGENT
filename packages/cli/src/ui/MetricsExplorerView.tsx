@@ -46,7 +46,6 @@ function HintsCarousel({
         } else if (key.return) {
             const category = hints[selectedCategory];
             const hint = category?.suggestions[selectedHint];
-            console.error('[DEBUG HintsCarousel] Enter pressed, hint:', JSON.stringify(hint));
             if (hint) {
                 onSelect({ text: hint.text, promql: hint.promql });
             }
@@ -285,9 +284,7 @@ export function MetricsExplorerView({ mcpManager, onExit }: MetricsExplorerViewP
     // 處理建議選擇（直接執行 PromQL，不需要翻譯）
     const handleHintSelect = async (hint: { text: string; promql: string }) => {
         if (!workflow) return;
-        console.error('[DEBUG] handleHintSelect called with hint:', JSON.stringify(hint));
         if (!hint.promql) {
-            console.error('[DEBUG] ERROR: hint.promql is empty!');
             return;
         }
         await workflow.executePromQL(hint.promql, hint.text);

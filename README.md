@@ -65,7 +65,38 @@ PROMETHEUS_ENDPOINT="http://localhost:9090"
 # [選填] Prometheus 認證 Headers（JSON 格式）
 # 支援 Bearer Token、Basic Auth、API Key 等認證方式
 PROMETHEUS_HEADERS='{"Authorization": "Bearer your-token"}'
+PROMETHEUS_HEADERS='{"Authorization": "Bearer your-token"}'
 ```
+
+### 4. 開發測試環境 (Local Development Environment)
+
+本專案提供一鍵啟動的完整可觀測性測試環境 (Docker)，無需準備真實服務即可測試 Agent 功能。
+
+包含了：
+- **Elasticsearch (v8)**: 日誌儲存 (`localhost:9200`)
+- **Kibana**: 日誌查詢介面 (`localhost:5601`)
+- **Prometheus**: 指標監控 (`localhost:9090`)
+- **Log Simulator**: 模擬真實微服務 Log 與 Metrics 的產生器 (`localhost:8080/metrics`)
+
+#### 啟動方式
+
+```bash
+# 啟動並建置環境
+docker compose up -d --build
+```
+
+#### 驗證安裝
+
+1.  **日誌 (Elasticsearch)**: 瀏覽 [http://localhost:5601](http://localhost:5601) (Kibana)，到 Discover 建立 `logs-simulation` Data View。
+2.  **指標 (Prometheus)**: 瀏覽 [http://localhost:9090](http://localhost:9090)，搜尋 `http_requests_total`。
+
+#### 模擬器說明
+
+`log-simulator` 會持續模擬 5 個微服務 (`ingress`, `payment`, `order`...) 的行為：
+- 產生 **結構化日誌 (JSON)** (含 Trace ID)
+- 產生 **OpenMetrics 指標** (`/metrics`)
+- 隨機加入 **真實錯誤情境** (DB Timeout, NullPointer 等)
+
 
 #### Prometheus 認證設定範例
 
@@ -94,7 +125,7 @@ start-cli.bat
 
 ```bash
 # 終端機 1：啟動 API Gateway
-cd packages/api && pnpm dev
+cd packages/backend && pnpm dev
 
 # 終端機 2：啟動 Web Frontend
 cd packages/web && pnpm dev

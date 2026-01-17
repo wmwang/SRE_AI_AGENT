@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: elasticsearch-local
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - elastic
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.1
+    container_name: kibana-local
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+
+  log-simulator:
+    image: node:18-alpine
+    container_name: log-simulator-local
+    volumes:
+      - ./docker/log-simulator:/app
+    working_dir: /app
+    command: node simulator.js
+    environment:
+      - ES_HOST=elasticsearch
+    ports:
+      - "8080:8080"
+    depends_on:
+      - elasticsearch
+    networks:
+      - elastic
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus-local
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - elastic
+
+volumes:
+  es_data:
+
+
+networks:
+  elastic:
+    driver: bridge

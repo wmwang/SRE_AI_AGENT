@@ -1,7 +1,7 @@
 /**
- * API Gateway - SRE AI Agent
+ * Backend Server - SRE AI Agent
  * 
- * 提供 HTTP API 介面，將請求轉換為 MCP 呼叫
+ * 提供 HTTP API 介面，執行 Workflow 並呼叫 MCP Servers
  */
 
 import './env.js';
@@ -10,6 +10,14 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
 import { MCPClientManager } from './mcp/manager.js';
+import { ChatOpenAI } from '@langchain/openai';
+import {
+    SLOGeneratorWorkflow,
+    type WorkflowEvent,
+    type MCPToolCaller,
+    type LLMClient,
+    type WorkflowEventEmitter,
+} from '@sre-agent/workflows';
 
 const app = new Hono();
 
@@ -293,19 +301,96 @@ app.post('/api/logs/analyze', async (c) => {
     }
 });
 
-// SSE 端點：串流 AI 回應
-app.get('/api/stream/analyze', async (c) => {
-    return streamSSE(c, async (stream) => {
-        await stream.writeSSE({ data: JSON.stringify({ status: 'connected' }) });
+// SSE 端點：串流 SLO Workflow
+app.post('/api/workflow/slo', async (c) => {
+    if (!mcpManager) {
+        return c.json({ error: 'MCP Manager not initialized' }, 500);
+    }
 
-        // TODO: 實作實際的 AI 串流
-        await stream.writeSSE({ data: JSON.stringify({ status: 'done' }) });
+    const { yamlContent, serviceName } = await c.req.json();
+
+    return streamSSE(c, async (stream) => {
+        // 建立 MCP Caller 適配器
+        const mcpCaller: MCPToolCaller = {
+            callTool: async (serverName: string, toolName: string, args: Record<string, unknown>) => {
+                return mcpManager!.callTool(serverName, toolName, args);
+            }
+        };
+
+        // 建立 LLM Client 適配器
+        const openaiApiKey = process.env.OPENAI_API_KEY;
+        let llmClient: LLMClient | undefined;
+
+        if (openaiApiKey) {
+            const llm = new ChatOpenAI({
+                apiKey: openaiApiKey,
+                configuration: {
+                    baseURL: process.env.OPENAI_BASE_URL,
+                },
+                model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+                temperature: 0,
+                streaming: true,
+            });
+
+            llmClient = {
+                async *stream(messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>) {
+                    const response = await llm.stream(messages);
+                    for await (const chunk of response) {
+                        yield { content: typeof chunk.content === 'string' ? chunk.content : '' };
+                    }
+                }
+            };
+        }
+
+        // 建立 Event Emitter 適配器 -> SSE
+        const eventEmitter: WorkflowEventEmitter = {
+            emit: (event: WorkflowEvent) => {
+                stream.writeSSE({ data: JSON.stringify(event) });
+            },
+            // Web 模式下不支援互動式輸入，直接確認
+            requestInput: async () => {
+                return '確認';  // Auto-confirm for Web
+            }
+        };
+
+        try {
+            const workflow = new SLOGeneratorWorkflow({
+                mcpCaller,
+                llmClient,
+                eventEmitter,
+            });
+
+            const finalState = await workflow.run({
+                yamlContent,
+                serviceName,
+            });
+
+            // 發送最終結果
+            stream.writeSSE({
+                data: JSON.stringify({
+                    type: 'result',
+                    data: {
+                        slos: finalState.currentSLOs,
+                        prometheusRules: finalState.prometheusRules,
+                        grafanaDashboard: finalState.grafanaDashboard,
+                        error: finalState.error,
+                    }
+                })
+            });
+        } catch (error) {
+            stream.writeSSE({
+                data: JSON.stringify({
+                    type: 'error',
+                    message: error instanceof Error ? error.message : String(error)
+                })
+            });
+        }
     });
 });
 
 // 啟動伺服器
 async function main() {
-    console.log('🚀 Starting API Gateway...');
+    console.log('🚀 Starting Backend Server...');
 
     // 初始化 MCP Manager
     mcpManager = new MCPClientManager();
@@ -326,7 +411,7 @@ async function main() {
         port,
     });
 
-    console.log(`🌐 API Gateway running at http://localhost:${port}`);
+    console.log(`🌐 Backend Server running at http://localhost:${port}`);
     console.log('');
     console.log('Available endpoints:');
     console.log('  GET  /health              - Health check');

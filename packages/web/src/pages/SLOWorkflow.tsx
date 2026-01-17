@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Upload, FileCode, Loader2, Check, ArrowRight, Download, Copy, CheckCircle, MessageSquare, Sparkles } from 'lucide-react'
-import { analyzeSLO, refineSLO, generateSLOConfigs, type SLO } from '../lib/api'
+import { Upload, FileCode, Loader2, Check, ArrowRight, Download, Copy, CheckCircle, MessageSquare, Sparkles, Zap } from 'lucide-react'
+import { analyzeSLO, refineSLO, generateSLOConfigs, runSLOWorkflowSSE, type SLO } from '../lib/api'
 
 type Step = 'upload' | 'analyzing' | 'review' | 'refining' | 'generating' | 'complete'
 
@@ -18,6 +18,10 @@ export function SLOWorkflow() {
     const [serviceName, setServiceName] = useState('')
     const [_error, setError] = useState<string | null>(null)
     const [useApi, _setUseApi] = useState(true) // 是否使用 API，false 時使用本地 fallback
+
+    // Agent Mode 狀態
+    const [agentMode, setAgentMode] = useState(false)
+    const [agentProgress, setAgentProgress] = useState<string[]>([])
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -405,15 +409,79 @@ groups:
         setActiveTab('prometheus')
         setFeedback('')
         setRefinementHistory([])
+        setAgentProgress([])
+    }
+
+    // Agent Mode: 執行完整 workflow 並串流進度
+    const startAgentWorkflow = async () => {
+        setStep('analyzing')
+        setAgentProgress([])
+        setError(null)
+
+        const serviceNameMatch = yamlContent.match(/name:\s*["']?([a-zA-Z0-9-]+)["']?/)
+        const inferredName = serviceNameMatch?.[1] || 'my-service'
+        setServiceName(inferredName)
+
+        try {
+            const result = await runSLOWorkflowSSE(
+                yamlContent,
+                inferredName,
+                (event) => {
+                    // 處理串流事件
+                    if (event.message) {
+                        setAgentProgress(prev => [...prev, event.message!])
+                    }
+                    if (event.step) {
+                        // 更新 UI 狀態
+                        if (event.step === 'review') {
+                            setStep('review')
+                        } else if (event.step === 'generate') {
+                            setStep('generating')
+                        }
+                    }
+                }
+            )
+
+            // 處理最終結果
+            if (result.error) {
+                setError(result.error)
+            } else {
+                setSlos(result.slos || [])
+                setPrometheusRules(result.prometheusRules || '')
+                setGrafanaDashboard(typeof result.grafanaDashboard === 'object'
+                    ? JSON.stringify(result.grafanaDashboard, null, 2)
+                    : '')
+                setStep('complete')
+            }
+        } catch (err) {
+            console.error('[Agent] Workflow failed:', err)
+            setError(err instanceof Error ? err.message : String(err))
+            // Fallback 到傳統模式
+            setStep('upload')
+        }
     }
 
     return (
         <div className="p-8 max-w-4xl mx-auto">
             {/* Header */}
             <div className="mb-8">
-                <h1 className="text-3xl font-bold mb-2">SLO Workflow</h1>
+                <div className="flex items-center justify-between mb-2">
+                    <h1 className="text-3xl font-bold">SLO Workflow</h1>
+                    {/* Agent Mode Toggle */}
+                    <button
+                        onClick={() => setAgentMode(!agentMode)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${agentMode
+                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                            : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]'
+                            }`}
+                    >
+                        <Zap className="w-4 h-4" />
+                        Agent Mode {agentMode ? 'ON' : 'OFF'}
+                    </button>
+                </div>
                 <p className="text-[hsl(var(--muted-foreground))]">
                     從 Kubernetes YAML 自動生成 SLO 建議、Prometheus Rules 和 Grafana Dashboard
+                    {agentMode && <span className="ml-2 text-purple-400">(使用 AI Agent 一鍵執行)</span>}
                 </p>
             </div>
 
@@ -471,10 +539,14 @@ groups:
                                     <pre className="text-sm font-mono whitespace-pre-wrap">{yamlContent.slice(0, 1000)}...</pre>
                                 </div>
                                 <button
-                                    onClick={startAnalysis}
-                                    className="w-full py-3 rounded-lg bg-[hsl(var(--primary))] text-white font-medium hover:opacity-90 transition-opacity"
+                                    onClick={agentMode ? startAgentWorkflow : startAnalysis}
+                                    className={`w-full py-3 rounded-lg font-medium hover:opacity-90 transition-opacity flex items-center justify-center gap-2 ${agentMode
+                                        ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white'
+                                        : 'bg-[hsl(var(--primary))] text-white'
+                                        }`}
                                 >
-                                    開始分析
+                                    {agentMode && <Zap className="w-5 h-5" />}
+                                    {agentMode ? 'AI Agent 一鍵執行' : '開始分析'}
                                 </button>
                             </>
                         )}
@@ -483,8 +555,21 @@ groups:
 
                 {step === 'analyzing' && (
                     <div className="py-12 text-center">
-                        <Loader2 className="w-12 h-12 mx-auto mb-4 text-[hsl(var(--primary))] animate-spin" />
-                        <p className="text-lg">正在分析 K8s 配置並生成 SLO 建議...</p>
+                        <Loader2 className={`w-12 h-12 mx-auto mb-4 animate-spin ${agentMode ? 'text-purple-500' : 'text-[hsl(var(--primary))]'
+                            }`} />
+                        <p className="text-lg mb-4">
+                            {agentMode ? 'AI Agent 正在執行...' : '正在分析 K8s 配置並生成 SLO 建議...'}
+                        </p>
+                        {/* Agent 進度顯示 */}
+                        {agentMode && agentProgress.length > 0 && (
+                            <div className="max-w-md mx-auto text-left bg-[hsl(var(--secondary))] rounded-lg p-4 max-h-48 overflow-auto">
+                                {agentProgress.map((msg, idx) => (
+                                    <div key={idx} className="text-sm text-[hsl(var(--muted-foreground))] py-1 border-b border-[hsl(var(--border))] last:border-0">
+                                        {msg}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 

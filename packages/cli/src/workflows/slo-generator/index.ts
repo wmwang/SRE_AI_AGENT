@@ -1,48 +1,95 @@
 /**
- * SLO Generator Workflow - Main Entry
+ * SLO Generator Workflow - CLI Adapter
  * 
- * LangGraph 風格的 workflow orchestrator
+ * 將共用的 @sre-agent/workflows 適配到 CLI 的 Ink UI
  */
 
 import { ChatOpenAI } from '@langchain/openai';
 import type { MCPClientManager } from '../../mcp/manager.js';
 import { getConfig } from '../../config.js';
 import {
+    SLOGeneratorWorkflow as SharedSLOWorkflow,
     type SLOWorkflowState,
-    type WorkflowCallbacks,
-    createInitialState,
-} from './state.js';
-import {
-    inputNode,
-    analyzeNode,
-    reviewNode,
-    refineNode,
-    generateNode,
-} from './nodes.js';
+    type WorkflowEventEmitter,
+    type LLMClient,
+    type MCPToolCaller,
+} from '@sre-agent/workflows';
 
 /**
- * SLO Generator Workflow
+ * CLI 專用的 Workflow Callbacks (舊介面，保持向後兼容)
+ */
+export interface WorkflowCallbacks {
+    onStepChange?: (step: SLOWorkflowState['currentStep'], state: SLOWorkflowState) => void;
+    onWaitingForInput?: (message: string) => Promise<string>;
+    onProgress?: (message: string) => void;
+}
+
+/**
+ * SLO Generator Workflow (CLI 版本)
  * 
- * 專門用於 SLO 自動生成的導引式流程
+ * 這個 class 封裝共用的 workflow，並提供 CLI 專用的介面
  */
 export class SLOGeneratorWorkflow {
-    private llm: ChatOpenAI;
-    private mcpManager: MCPClientManager;
+    private workflow: SharedSLOWorkflow;
     private callbacks: WorkflowCallbacks;
 
     constructor(mcpManager: MCPClientManager, callbacks: WorkflowCallbacks = {}) {
         const config = getConfig();
-        this.mcpManager = mcpManager;
         this.callbacks = callbacks;
 
-        this.llm = new ChatOpenAI({
+        // 建立 MCP Caller 適配器
+        const mcpCaller: MCPToolCaller = {
+            callTool: async (serverName: string, toolName: string, args: Record<string, unknown>) => {
+                return mcpManager.callTool(serverName, toolName, args);
+            }
+        };
+
+        // 建立 LLM Client 適配器
+        const llm = new ChatOpenAI({
             apiKey: config.openai.apiKey,
             configuration: {
                 baseURL: config.openai.baseURL,
             },
             model: config.openai.model,
             temperature: 0,
-            streaming: true,  // 使用 SSE 串流模式
+            streaming: true,
+        });
+
+        const llmClient: LLMClient = {
+            async *stream(messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>) {
+                const response = await llm.stream(messages);
+                for await (const chunk of response) {
+                    yield { content: typeof chunk.content === 'string' ? chunk.content : '' };
+                }
+            }
+        };
+
+        // 建立 Event Emitter 適配器 (將新介面映射回舊 callbacks)
+        const eventEmitter: WorkflowEventEmitter = {
+            emit: (event: { type: string; step?: string; message?: string; data?: unknown }) => {
+                switch (event.type) {
+                    case 'step_change':
+                        this.callbacks.onStepChange?.(event.step as any, event.data as SLOWorkflowState);
+                        break;
+                    case 'progress':
+                        this.callbacks.onProgress?.(event.message || '');
+                        break;
+                    case 'error':
+                        this.callbacks.onProgress?.(`❌ ${event.message}`);
+                        break;
+                    case 'complete':
+                        this.callbacks.onStepChange?.('complete', event.data as SLOWorkflowState);
+                        break;
+                }
+            },
+            requestInput: callbacks.onWaitingForInput,
+        };
+
+        // 建立共用 workflow
+        this.workflow = new SharedSLOWorkflow({
+            mcpCaller,
+            llmClient,
+            eventEmitter,
         });
     }
 
@@ -55,44 +102,10 @@ export class SLOGeneratorWorkflow {
         serviceName?: string;
         outputPath?: string;
     }): Promise<SLOWorkflowState> {
-        let state: SLOWorkflowState = {
-            ...createInitialState(),
-            ...input,
-        };
-
-        // 步驟執行循環
-        while (state.currentStep !== 'complete') {
-            this.callbacks.onStepChange?.(state.currentStep, state);
-
-            switch (state.currentStep) {
-                case 'input':
-                    state = { ...state, ...(await inputNode(state, this.callbacks)) };
-                    break;
-                case 'analyze':
-                    state = { ...state, ...(await analyzeNode(state, this.mcpManager, this.callbacks)) };
-                    break;
-                case 'review':
-                    state = { ...state, ...(await reviewNode(state, this.callbacks)) };
-                    break;
-                case 'refine':
-                    state = { ...state, ...(await refineNode(state, this.llm, this.callbacks)) };
-                    break;
-                case 'generate':
-                    state = { ...state, ...(await generateNode(state, this.mcpManager, this.callbacks)) };
-                    break;
-            }
-
-            // 如果有錯誤，跳出
-            if (state.error) {
-                break;
-            }
-        }
-
-        this.callbacks.onStepChange?.('complete', state);
-        return state;
+        return this.workflow.run(input);
     }
 }
 
 // Re-export types for convenience
-export type { SLOWorkflowState, SLODefinition, WorkflowCallbacks } from './state.js';
-export { createInitialState } from './state.js';
+export type { SLOWorkflowState, SLODefinition } from '@sre-agent/workflows';
+export { createSLOInitialState as createInitialState } from '@sre-agent/workflows';

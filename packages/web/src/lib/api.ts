@@ -97,6 +97,83 @@ export async function generateSLOConfigs(
 }
 
 // ============================================
+// SLO Workflow SSE (Agent Mode)
+// ============================================
+
+export interface WorkflowEvent {
+    type: 'step_change' | 'progress' | 'error' | 'complete' | 'result';
+    step?: string;
+    message?: string;
+    data?: unknown;
+}
+
+export interface SLOWorkflowResult {
+    slos: SLO[];
+    prometheusRules?: string;
+    grafanaDashboard?: object;
+    error?: string;
+}
+
+/**
+ * 串流式執行 SLO Workflow (Agent Mode)
+ * 
+ * 透過 SSE 即時接收 workflow 進度並回傳結果
+ */
+export async function runSLOWorkflowSSE(
+    yamlContent: string,
+    serviceName: string,
+    onEvent: (event: WorkflowEvent) => void
+): Promise<SLOWorkflowResult> {
+    const response = await fetch(`${API_BASE}/workflow/slo`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ yamlContent, serviceName }),
+    });
+
+    if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+        throw new Error('No response body');
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result: SLOWorkflowResult = { slos: [] };
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+            if (line.startsWith('data: ')) {
+                try {
+                    const event = JSON.parse(line.slice(6)) as WorkflowEvent;
+                    onEvent(event);
+
+                    // 收集最終結果
+                    if (event.type === 'result' && event.data) {
+                        result = event.data as SLOWorkflowResult;
+                    }
+                } catch (e) {
+                    console.warn('[SSE] Failed to parse event:', line);
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+// ============================================
 // Metrics Explorer API
 // ============================================
 
